@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 
 export interface StoreSettings {
   taxRate: number;
+  baseGoldRatePerGram: number;
+  goldRatePerGram: number;
+  diamondRatePerCarat: number;
+  goldMakingChargeRate: number;
+  gramsPerTola: number;
   freeShippingThreshold: number;
   standardShippingRate: number;
   expressShippingRate: number;
@@ -12,6 +17,11 @@ export interface StoreSettings {
 
 const DEFAULTS: StoreSettings = {
   taxRate: 13,
+  baseGoldRatePerGram: 16358,
+  goldRatePerGram: 16358,
+  diamondRatePerCarat: 28000,
+  goldMakingChargeRate: 0.4,
+  gramsPerTola: 11.664,
   freeShippingThreshold: 5000,
   standardShippingRate: 150,
   expressShippingRate: 350,
@@ -35,6 +45,7 @@ const DEFAULTS: StoreSettings = {
 
 let cached: StoreSettings | null = null;
 let fetching: Promise<StoreSettings> | null = null;
+const SETTINGS_EVENT = 'dwarika:settings-updated';
 
 async function load(): Promise<StoreSettings> {
   if (cached) return cached;
@@ -52,12 +63,18 @@ async function load(): Promise<StoreSettings> {
 export function invalidateSettingsCache() {
   cached = null;
   fetching = null;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(SETTINGS_EVENT));
+  }
 }
 
 export function useStoreSettings(): StoreSettings | null {
   const [settings, setSettings] = useState<StoreSettings | null>(cached);
   useEffect(() => {
-    load().then(setSettings);
+    const refresh = () => load().then(setSettings);
+    refresh();
+    window.addEventListener(SETTINGS_EVENT, refresh);
+    return () => window.removeEventListener(SETTINGS_EVENT, refresh);
   }, []);
   return settings;
 }

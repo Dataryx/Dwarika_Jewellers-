@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowDown } from 'lucide-react';
+import { ArrowRight, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import ProductCard from '../components/ProductCard';
+import LivePriceStrip from '../components/LivePriceStrip';
 import { Product } from '../lib/store';
+import { subscribeNewsletter } from '../lib/newsletter';
 import {
   getHomepageBanner,
   fetchHomepageBanner,
@@ -34,6 +36,11 @@ export default function Home() {
   const [banner, setBanner] = useState<HomeBannerConfig>(() => getHomepageBanner());
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [story, setStory] = useState<StoryContent>(DEFAULT_STORY);
+  const [categorySlide, setCategorySlide] = useState(0);
+  const [featuredSlide, setFeaturedSlide] = useState(0);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState('');
 
   useEffect(() => {
     fetchHomepageBanner().then(setBanner);
@@ -41,6 +48,22 @@ export default function Home() {
       fetchHomepageBanner().then(setBanner);
     });
   }, []);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewsletterSubmitting(true);
+    setNewsletterMessage('');
+
+    try {
+      const result = await subscribeNewsletter(newsletterEmail);
+      setNewsletterEmail('');
+      setNewsletterMessage(result.alreadySubscribed ? 'You are already subscribed.' : 'Thanks for subscribing!');
+    } catch (err) {
+      setNewsletterMessage(err instanceof Error ? err.message : 'Subscription failed');
+    } finally {
+      setNewsletterSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/products?featured=true')
@@ -71,8 +94,9 @@ export default function Home() {
 
   return (
     <div className="overflow-hidden">
+      <LivePriceStrip />
       {/* Hero — full-screen banner */}
-      <section className="relative -mt-20 h-screen flex items-center overflow-hidden">
+      <section className="relative h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <motion.div
             initial={{ scale: 1.06, opacity: 0 }}
@@ -179,35 +203,64 @@ export default function Home() {
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            {categories.map((category, i) => (
+          <div className="relative">
+            {/* Navigation Buttons */}
+            <button
+              onClick={() => setCategorySlide(Math.max(0, categorySlide - 1))}
+              disabled={categorySlide === 0}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 lg:-translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              aria-label="Previous categories"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={() => setCategorySlide(Math.min(Math.max(0, categories.length - 4), categorySlide + 1))}
+              disabled={categorySlide >= categories.length - 4}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 lg:translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              aria-label="Next categories"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            {/* Categories Carousel */}
+            <div className="overflow-hidden">
               <motion.div
-                key={category.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                className="flex gap-4 lg:gap-6 w-full"
+                animate={{ x: `calc(-1 * ${categorySlide} * (25% + 0.375rem))` }}
+                transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
               >
-                <Link to={`/collections/${category.slug}`}>
-                  <div className="group relative aspect-[3/4] overflow-hidden bg-[#faf9f7]">
-                    <motion.img
-                      src={category.image_url}
-                      alt={category.name}
-                      className="w-full h-full object-cover"
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <h3 className="text-lg font-serif text-white">{category.name}</h3>
-                      <span className="inline-flex items-center gap-1 text-xs text-white/80 mt-2 group-hover:gap-2 transition-all">
-                        Shop Now <ArrowRight className="w-3 h-3" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
+                {categories.map((category, i) => (
+                  <motion.div
+                    key={category.name}
+                    className="flex-none w-[calc((100%-1rem)/2)] lg:w-[calc((100%-4.5rem)/4)]"
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                  >
+                    <Link to={`/collections/${category.slug}`}>
+                      <div className="group relative aspect-[3/4] overflow-hidden bg-[#faf9f7]">
+                        <motion.img
+                          src={category.image_url}
+                          alt={category.name}
+                          className="w-full h-full object-cover"
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-6">
+                          <h3 className="text-lg font-serif text-white">{category.name}</h3>
+                          <span className="inline-flex items-center gap-1 text-xs text-white/80 mt-2 group-hover:gap-2 transition-all">
+                            Shop Now <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
@@ -238,10 +291,41 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-              {featuredProducts.map((product, i) => (
-                <ProductCard key={product.id} product={product} index={i} />
-              ))}
+            <div className="relative">
+              <button
+                onClick={() => setFeaturedSlide(Math.max(0, featuredSlide - 1))}
+                disabled={featuredSlide === 0}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 lg:-translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous featured products"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <button
+                onClick={() => setFeaturedSlide(Math.min(Math.max(0, featuredProducts.length - 4), featuredSlide + 1))}
+                disabled={featuredSlide >= featuredProducts.length - 4}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 lg:translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next featured products"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              <div className="overflow-hidden">
+                <motion.div
+                  className="flex gap-6 lg:gap-8 w-full"
+                  animate={{ x: `calc(-1 * ${featuredSlide} * (25% + 1.125rem))` }}
+                  transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+                >
+                  {featuredProducts.map((product, i) => (
+                    <div
+                      key={product.id}
+                      className="flex-none w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-6rem)/4)]"
+                    >
+                      <ProductCard product={product} index={i} />
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
             </div>
           )}
 
@@ -324,16 +408,22 @@ export default function Home() {
               <p className="mt-4 text-gray-400">
                 Be the first to discover new arrivals, exclusive offers, and styling inspiration.
               </p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+              <form onSubmit={handleNewsletterSubmit} className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <input
                   type="email"
                   placeholder="Enter your email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  required
                   className="flex-1 max-w-sm px-5 py-4 bg-white/5 border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:border-[#c9a962] transition-colors"
                 />
-                <button className="px-8 py-4 bg-[#c9a962] text-gray-900 text-xs font-medium tracking-[0.15em] uppercase hover:bg-white transition-colors">
-                  Subscribe
+                <button disabled={newsletterSubmitting} className="px-8 py-4 bg-[#c9a962] text-gray-900 text-xs font-medium tracking-[0.15em] uppercase hover:bg-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                  {newsletterSubmitting ? 'Subscribing...' : 'Subscribe'}
                 </button>
-              </div>
+              </form>
+              {newsletterMessage && (
+                <p className="mt-4 text-sm text-gray-300">{newsletterMessage}</p>
+              )}
             </motion.div>
           </div>
         </div>

@@ -56,7 +56,7 @@ export default function Customers() {
             </div>
             <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Spent</span>
           </div>
-          <p className="text-2xl font-bold text-white">${totalSpent.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-white">रु {totalSpent.toLocaleString()}</p>
           <p className="text-xs text-emerald-400 mt-1">+23% from last month</p>
         </div>
         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
@@ -138,7 +138,7 @@ export default function Customers() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Total Spent</p>
-                <p className="text-sm font-semibold text-white">${customer.spent.toFixed(2)}</p>
+                <p className="text-sm font-semibold text-white">रु {customer.spent.toFixed(2)}</p>
               </div>
             </div>
           </motion.div>

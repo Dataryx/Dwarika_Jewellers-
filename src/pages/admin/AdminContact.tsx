@@ -14,6 +14,9 @@ interface ContactInfo {
   address: string;
   phone: string;
   email: string;
+  facebook: string;
+  instagram: string;
+  tiktok: string;
   openingHours: string;
   mapEmbedUrl: string;
 }
@@ -202,6 +205,20 @@ export default function AdminContact() {
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-2 block flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Email</label>
                 <input value={info.email} onChange={(e) => update('email', e.target.value)} className={inputClass} />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Facebook URL</label>
+                <input value={info.facebook} onChange={(e) => update('facebook', e.target.value)} className={inputClass} placeholder="https://facebook.com/yourpage" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Instagram URL</label>
+                <input value={info.instagram} onChange={(e) => update('instagram', e.target.value)} className={inputClass} placeholder="https://instagram.com/yourhandle" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">TikTok URL</label>
+                <input value={info.tiktok} onChange={(e) => update('tiktok', e.target.value)} className={inputClass} placeholder="https://tiktok.com/@yourhandle" />
               </div>
             </div>
           </div>

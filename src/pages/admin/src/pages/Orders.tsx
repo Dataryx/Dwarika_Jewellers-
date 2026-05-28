@@ -56,7 +56,7 @@ export default function Orders() {
         <div className="flex items-center gap-3">
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-2.5">
             <p className="text-xs text-slate-500">Total Revenue</p>
-            <p className="text-lg font-bold text-white">${totalRevenue.toLocaleString()}</p>
+            <p className="text-lg font-bold text-white">रु {totalRevenue.toLocaleString()}</p>
           </div>
           <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl transition-colors text-sm border border-slate-700">
             <Download className="w-4 h-4" />
@@ -146,7 +146,7 @@ export default function Orders() {
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-400">{order.items}</td>
                   <td className="px-6 py-4 text-sm text-slate-400">{order.payment}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-white text-right">${order.total.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-white text-right">रु {order.total.toFixed(2)}</td>
                   <td className="px-6 py-4">
                     <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors ml-auto">
                       <Eye className="w-4 h-4" />

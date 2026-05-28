@@ -1,4 +1,4 @@
-import { Package, ShoppingCart, DollarSign, Clock } from 'lucide-react';
+import { Package, ShoppingCart, Clock } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import RevenueChart from '../components/RevenueChart';
 import CategoryChart from '../components/CategoryChart';
@@ -31,9 +31,9 @@ export default function Dashboard() {
         />
         <StatCard
           title="Revenue"
-          value="$48,294"
+          value="रु 48,294"
           change={23}
-          icon={DollarSign}
+          iconText="रु"
           iconColor="text-accent"
           iconBg="bg-accent/10"
           delay={0.2}

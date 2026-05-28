@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Package } from 'lucide-react';
+import { useState } from 'react';
 
 interface TopProduct {
   name: string;
@@ -13,20 +14,25 @@ interface TopProductsProps {
 }
 
 export default function TopProducts({ products }: TopProductsProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
+  const visibleProducts = products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.5 }}
-      className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6"
+      className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 h-full flex flex-col"
     >
       <h3 className="text-base font-semibold text-white mb-1">Top Products</h3>
       <p className="text-sm text-gray-500 mb-5">Best performing products by sales</p>
-      <div className="space-y-4">
+      <div className="space-y-4 flex-1 min-h-[360px]">
         {products.length === 0 && (
           <p className="text-sm text-gray-500 text-center py-4">No sales data yet</p>
         )}
-        {products.map((product, i) => (
+        {visibleProducts.map((product, i) => (
           <motion.div
             key={product.name}
             initial={{ opacity: 0, x: -10 }}
@@ -54,6 +60,41 @@ export default function TopProducts({ products }: TopProductsProps) {
           </motion.div>
         ))}
       </div>
+      {products.length > 0 && (
+        <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-gray-700">
+          <p className="text-xs text-gray-500">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
+            >
+              Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${page === currentPage ? 'border-[#c9a962] bg-[#c9a962] text-white' : 'border-gray-700 text-gray-300 hover:border-[#c9a962] hover:text-[#c9a962]'}`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

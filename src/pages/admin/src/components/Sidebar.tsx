@@ -27,9 +27,7 @@ export default function Sidebar() {
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-slate-800">
-        <div className="w-9 h-9 bg-accent rounded-lg flex items-center justify-center mr-3">
-          <Hexagon className="w-5 h-5 text-slate-950" strokeWidth={2.5} />
-        </div>
+        <img src="/favicon.svg?v=2" alt="Dwarika logo" className="w-9 h-9 shrink-0 mr-3" />
         <div>
           <h1 className="text-lg font-bold text-white leading-tight">Dwarika</h1>
           <p className="text-xs text-slate-500">Admin Panel</p>

@@ -3,6 +3,8 @@ import { X, Search, Loader2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '../lib/store';
+import { useStoreSettings } from '../lib/useStoreSettings';
+import { resolveProductPrice } from '../lib/pricing';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const settings = useStoreSettings();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -119,7 +122,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-medium text-gray-900">{product.name}</h3>
                           <p className="text-xs text-gray-500 mt-0.5">{product.category} • {product.material}</p>
-                          <p className="text-sm font-medium text-[#c9a962] mt-1">रु {product.price.toLocaleString('en-IN')}</p>
+                          <p className="text-sm font-medium text-[#c9a962] mt-1">
+                            रु {resolveProductPrice(product, settings).toLocaleString('en-IN')}
+                          </p>
                         </div>
                       </Link>
                     ))}

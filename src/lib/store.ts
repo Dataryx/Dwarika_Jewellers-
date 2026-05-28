@@ -5,6 +5,12 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  product_type?: string;
+  gold_weight_14k?: number;
+  diamond_weight_carat?: number;
+  labour_charge?: number;
+  gold_extra_charge?: number;
+  diamond_extra_charge?: number;
   image_url: string;
   category: string;
   material: string;

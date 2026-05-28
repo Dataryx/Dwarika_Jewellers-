@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, Filter, Eye, Download, CheckCircle, XCircle, Truck, Clock,
+  Search, Filter, Eye, Download, CheckCircle, XCircle, Truck, Clock, X,
   ShoppingCart, Package,
 } from 'lucide-react';
 
@@ -50,7 +50,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -109,9 +109,9 @@ export default function AdminOrders() {
           <p className="text-sm text-gray-500 mt-1">Manage and track customer orders</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-2.5">
-            <p className="text-xs text-gray-500">Filtered Revenue</p>
-            <p className="text-lg font-bold text-white">रु {totalRevenue.toLocaleString('en-IN')}</p>
+          <div className="bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-2.5 h-[42px] min-w-[250px] flex items-center justify-between gap-3">
+            <p className="text-sm text-gray-400">Filtered Revenue</p>
+            <p className="text-sm font-semibold text-white">रु {totalRevenue.toLocaleString('en-IN')}</p>
           </div>
           <button
             onClick={() => {
@@ -219,8 +219,7 @@ export default function AdminOrders() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.25 + i * 0.04 }}
-                    className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors cursor-pointer"
-                    onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+                    className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm font-medium text-white">#{order.id}</td>
                     <td className="px-6 py-4">
@@ -248,7 +247,7 @@ export default function AdminOrders() {
                     <td className="px-6 py-4 text-sm font-medium text-white text-right">रु {Number(order.total).toLocaleString('en-IN')}</td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === order.id ? null : order.id); }}
+                        onClick={() => setSelectedOrder(order)}
                         className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors ml-auto"
                       >
                         <Eye className="w-4 h-4" />
@@ -261,36 +260,71 @@ export default function AdminOrders() {
           </table>
         </div>
 
-        {expandedId && (
+      </motion.div>
+
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4" onClick={() => setSelectedOrder(null)}>
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="border-t border-gray-700 px-6 py-5 bg-gray-900/40"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-2xl bg-gray-900 border border-gray-700 rounded-2xl p-5 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
           >
-            <h4 className="text-sm font-medium text-gray-400 mb-3">
-              Order #{expandedId} — Items
-            </h4>
-            <div className="space-y-3">
-              {orders.find(o => o.id === expandedId)?.items?.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-700/30 rounded-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h4 className="text-sm font-semibold text-white">Order #{selectedOrder.id} Details</h4>
+                <p className="text-xs text-gray-400 mt-1">Customer order details</p>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="bg-gray-800 rounded-xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Customer</p>
+                <p className="text-sm text-white mt-1">{selectedOrder.customer_name}</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Email</p>
+                <p className="text-sm text-white mt-1 truncate">{selectedOrder.customer_email}</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Date</p>
+                <p className="text-sm text-white mt-1">{new Date(selectedOrder.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Total</p>
+                <p className="text-sm text-white mt-1">रु {Number(selectedOrder.total).toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {(selectedOrder.items || []).map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl">
                   <img
                     src={item.product?.image_url || '/placeholder.jpg'}
                     alt={item.product?.name}
-                    className="w-12 h-12 rounded-lg object-cover bg-gray-600 shrink-0"
+                    className="w-11 h-11 rounded-lg object-cover bg-gray-700 shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{item.product?.name}</p>
+                    <p className="text-sm text-white truncate">{item.product?.name}</p>
                     <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
                   </div>
                   <p className="text-sm font-medium text-white">रु {Number(item.price).toLocaleString('en-IN')}</p>
                 </div>
-              )) || (
+              ))}
+              {(!selectedOrder.items || selectedOrder.items.length === 0) && (
                 <p className="text-sm text-gray-500">No item details available</p>
               )}
             </div>
           </motion.div>
-        )}
-      </motion.div>
+        </div>
+      )}
     </div>
   );
 }

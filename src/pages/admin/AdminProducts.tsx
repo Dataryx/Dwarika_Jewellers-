@@ -4,12 +4,20 @@ import { Plus, Edit2, Trash2, Search, Filter, X, Save, Package, Eye } from 'luci
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
 import { showNotification } from '../../components/Notification';
+import { useStoreSettings } from '../../lib/useStoreSettings';
+import { resolveProductPrice } from '../../lib/pricing';
 
 interface Product {
   id: number;
   name: string;
   description: string;
   price: number;
+  product_type?: string;
+  gold_weight_14k?: number;
+  diamond_weight_carat?: number;
+  labour_charge?: number;
+  gold_extra_charge?: number;
+  diamond_extra_charge?: number;
   image_url: string;
   category: string;
   material: string;
@@ -34,6 +42,7 @@ export function AdminProductList() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
   const navigate = useNavigate();
+  const settings = useStoreSettings();
 
   useEffect(() => {
     fetchProducts();
@@ -197,7 +206,9 @@ export function AdminProductList() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-400 capitalize">{product.category}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-white">रु {product.price.toLocaleString('en-IN')}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-white">
+                        रु {resolveProductPrice(product as any, settings).toLocaleString('en-IN')}
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-400">{product.stock}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${status.style}`}>
@@ -238,17 +249,31 @@ export function AdminProductForm() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const settings = useStoreSettings();
+  const [loadedProduct, setLoadedProduct] = useState<Partial<Product> | null>(null);
+  const [allowTypeChange, setAllowTypeChange] = useState(false);
+  const [originalType, setOriginalType] = useState<string>('both');
   const [apiCategories, setApiCategories] = useState<{ slug: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
+    product_type: 'both',
+    gold_weight_14k: '',
+    diamond_weight_carat: '',
+    labour_charge: '',
+    gold_extra_charge: '',
+    diamond_extra_charge: '',
     image_url: '',
     category: 'rings',
     material: '',
     stock: '10',
     featured: false,
   });
+  const autoPricedTypes = new Set(['gold', 'diamond', 'both']);
+  const isAutoPricedType = autoPricedTypes.has(formData.product_type);
+  const showGoldFields = formData.product_type === 'gold' || formData.product_type === 'both';
+  const showDiamondFields = formData.product_type === 'diamond' || formData.product_type === 'both';
 
   useEffect(() => {
     fetch('/api/categories').then(r => r.json()).then(setApiCategories).catch(() => {});
@@ -263,10 +288,20 @@ export function AdminProductForm() {
     try {
       const res = await fetch(`/api/products?id=${id}`);
       const data = await res.json();
+      setLoadedProduct(data);
+      setOriginalType(data.product_type ?? 'both');
+      setAllowTypeChange(false);
+      const textOrEmpty = (v: unknown) => (v === undefined || v === null ? '' : String(v));
       setFormData({
         name: data.name,
         description: data.description,
-        price: data.price.toString(),
+        price: textOrEmpty(data.price),
+        product_type: data.product_type ?? 'both',
+        gold_weight_14k: textOrEmpty(data.gold_weight_14k),
+        diamond_weight_carat: textOrEmpty(data.diamond_weight_carat),
+        labour_charge: textOrEmpty(data.labour_charge),
+        gold_extra_charge: textOrEmpty(data.gold_extra_charge),
+        diamond_extra_charge: textOrEmpty(data.diamond_extra_charge),
         image_url: data.image_url,
         category: data.category,
         material: data.material,
@@ -280,6 +315,51 @@ export function AdminProductForm() {
     }
   };
 
+  useEffect(() => {
+    const gramsPerTola = settings?.gramsPerTola ?? 11.664;
+    const goldRatePerGram = settings?.goldRatePerGram ?? 16358;
+    const diamondRatePerCarat = settings?.diamondRatePerCarat ?? 28000;
+    const makingChargeRate = settings?.goldMakingChargeRate ?? 0.4;
+
+    const goldWeight = Number(formData.gold_weight_14k || 0);
+    const diamondWeight = Number(formData.diamond_weight_carat || 0);
+    const labourCharge = Number(formData.labour_charge || 0);
+    const goldExtraCharge = Number(formData.gold_extra_charge || 0);
+    const diamondExtraCharge = Number(formData.diamond_extra_charge || 0);
+
+    const goldRatePerTola = goldRatePerGram * gramsPerTola;
+    const goldPerGram14k = (goldRatePerTola * 14) / 24 / gramsPerTola;
+    const goldBase = goldWeight * goldPerGram14k;
+    const goldMaking = goldBase * makingChargeRate;
+    const goldSelling = goldBase + goldMaking + labourCharge + goldExtraCharge;
+    const diamondSelling = diamondWeight * diamondRatePerCarat + diamondExtraCharge;
+    const computed =
+      formData.product_type === 'gold'
+        ? Math.round(goldSelling)
+        : formData.product_type === 'diamond'
+          ? Math.round(diamondSelling + labourCharge)
+          : Math.round(goldSelling + diamondSelling);
+
+    if (isAutoPricedType) {
+      setFormData((prev) => ({
+        ...prev,
+        price: String(computed),
+      }));
+    }
+  }, [
+    formData.gold_weight_14k,
+    formData.diamond_weight_carat,
+    settings?.goldRatePerGram,
+    settings?.diamondRatePerCarat,
+    settings?.goldMakingChargeRate,
+    settings?.gramsPerTola,
+    formData.product_type,
+    isAutoPricedType,
+    formData.labour_charge,
+    formData.gold_extra_charge,
+    formData.diamond_extra_charge,
+  ]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.image_url.trim()) {
@@ -290,18 +370,66 @@ export function AdminProductForm() {
     try {
       const url = id ? `/api/products?id=${id}` : '/api/products';
       const method = id ? 'PUT' : 'POST';
+      const numOrZero = (value: string) => (value.trim() === '' ? 0 : Number(value));
+      const choose = (typed: string, fallback: unknown) =>
+        typed.trim() === '' ? (fallback as number | undefined) : Number(typed);
+
+      const payload = {
+        ...formData,
+        price: Number(formData.price),
+        gold_weight_14k: id
+          ? choose(formData.gold_weight_14k, loadedProduct?.gold_weight_14k)
+          : numOrZero(formData.gold_weight_14k),
+        diamond_weight_carat: id
+          ? choose(formData.diamond_weight_carat, loadedProduct?.diamond_weight_carat)
+          : numOrZero(formData.diamond_weight_carat),
+        labour_charge: id
+          ? choose(formData.labour_charge, loadedProduct?.labour_charge)
+          : numOrZero(formData.labour_charge),
+        gold_extra_charge: id
+          ? choose(formData.gold_extra_charge, loadedProduct?.gold_extra_charge)
+          : numOrZero(formData.gold_extra_charge),
+        diamond_extra_charge: id
+          ? choose(formData.diamond_extra_charge, loadedProduct?.diamond_extra_charge)
+          : numOrZero(formData.diamond_extra_charge),
+        stock: Number(formData.stock),
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price),
-          stock: parseInt(formData.stock),
-        }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) navigate('/admin/products');
+      if (!res.ok) throw new Error('Failed to save product');
+
+      const saved = await res.json();
+      const savedId = saved?.id ?? Number(id);
+      if (!savedId) throw new Error('Saved product ID missing');
+
+      // Round-trip verification to ensure DB persistence.
+      const verifyRes = await fetch(`/api/products?id=${savedId}`);
+      const verified = await verifyRes.json();
+      const verifiedOk =
+        String(verified?.name ?? '') === String(payload.name ?? '') &&
+        String(verified?.product_type ?? '') === String(payload.product_type ?? '') &&
+        Number(verified?.price ?? 0) === Number(payload.price ?? 0) &&
+        Number(verified?.gold_weight_14k ?? 0) === Number(payload.gold_weight_14k ?? 0) &&
+        Number(verified?.diamond_weight_carat ?? 0) === Number(payload.diamond_weight_carat ?? 0) &&
+        Number(verified?.labour_charge ?? 0) === Number(payload.labour_charge ?? 0) &&
+        Number(verified?.gold_extra_charge ?? 0) === Number(payload.gold_extra_charge ?? 0) &&
+        Number(verified?.diamond_extra_charge ?? 0) === Number(payload.diamond_extra_charge ?? 0);
+
+      if (!verifiedOk) {
+        showNotification('Save verification failed. Please try again.');
+        setSaving(false);
+        return;
+      }
+
+      showNotification('Saved to database successfully.');
+      navigate('/admin/products');
     } catch (err) {
       console.error('Failed to save product:', err);
+      showNotification('Failed to save product.');
     } finally {
       setSaving(false);
     }
@@ -358,16 +486,137 @@ export function AdminProductForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
+            <label className="text-sm font-medium text-white mb-2 block">Product Type</label>
+            {id && (
+              <p className="text-xs text-gray-500 mb-2">
+                Current type: <span className="text-gray-300 capitalize">{formData.product_type === 'both' ? 'Gold + Diamond' : formData.product_type}</span>
+              </p>
+            )}
+            <select
+              value={formData.product_type}
+              onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
+              disabled={Boolean(id) && !allowTypeChange}
+              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+            >
+              <option value="gold">Gold</option>
+              <option value="diamond">Diamond</option>
+              <option value="both">Gold + Diamond</option>
+              <option value="silver">Silver</option>
+              <option value="platinum">Platinum</option>
+              <option value="pearl">Pearl</option>
+              <option value="gemstone">Gemstone</option>
+              <option value="custom">Other / Custom</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {!id ? 'Gold/Diamond/Both are auto-priced. Other types use manual price.' : ''}
+            </p>
+            {id && !allowTypeChange && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Changing product type can affect pricing fields. Continue?')) {
+                    setAllowTypeChange(true);
+                  }
+                }}
+                className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
+              >
+                Enable Type Change
+              </button>
+            )}
+            {id && allowTypeChange && formData.product_type !== originalType && (
+              <p className="text-xs text-amber-400 mt-2">
+                Type changed from <span className="capitalize">{originalType === 'both' ? 'Gold + Diamond' : originalType}</span> to{' '}
+                <span className="capitalize">{formData.product_type === 'both' ? 'Gold + Diamond' : formData.product_type}</span>.
+                Save to apply.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
             <label className="text-sm font-medium text-white mb-2 block">Price (रु)</label>
             <input
               type="number"
               step="0.01"
               value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              onChange={(e) => !isAutoPricedType && setFormData({ ...formData, price: e.target.value })}
+              readOnly={isAutoPricedType}
               required
               className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              {isAutoPricedType ? '' : 'Manual price entry for selected product type'}
+            </p>
           </div>
+        </div>
+
+        {showGoldFields && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="text-sm font-medium text-white mb-2 block">Gold Weight 14K (gm)</label>
+              <input
+                type="number"
+                step="0.001"
+                value={formData.gold_weight_14k}
+                onChange={(e) => setFormData({ ...formData, gold_weight_14k: e.target.value })}
+                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-white mb-2 block">Labour Charge (रु)</label>
+              <input
+                type="number"
+                step="1"
+                value={formData.labour_charge}
+                onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
+                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-white mb-2 block">Gold Extra Charge (रु)</label>
+              <input
+                type="number"
+                step="1"
+                value={formData.gold_extra_charge}
+                onChange={(e) => setFormData({ ...formData, gold_extra_charge: e.target.value })}
+                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              />
+              <p className="text-xs text-gray-500 mt-1">Any additional gold-side cost (e.g. transport/other)</p>
+            </div>
+          </div>
+        )}
+
+        {showDiamondFields && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="text-sm font-medium text-white mb-2 block">Diamond Weight (carat)</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  value={formData.diamond_weight_carat}
+                  onChange={(e) => setFormData({ ...formData, diamond_weight_carat: e.target.value })}
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-white mb-2 block">Diamond Extra Charge (रु)</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={formData.diamond_extra_charge}
+                  onChange={(e) => setFormData({ ...formData, diamond_extra_charge: e.target.value })}
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-1">Any additional diamond-side cost/markup</p>
+              </div>
+            </div>
+
+          </>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label className="text-sm font-medium text-white mb-2 block">Stock</label>
             <input

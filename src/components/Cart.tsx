@@ -4,9 +4,16 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { useEffect } from 'react';
 import { cartHeaders } from '../lib/session';
+import { useStoreSettings } from '../lib/useStoreSettings';
+import { resolveProductPrice } from '../lib/pricing';
 
 export default function Cart() {
-  const { cart, cartOpen, toggleCart, setCart, cartTotal } = useStore();
+  const { cart, cartOpen, toggleCart, setCart } = useStore();
+  const settings = useStoreSettings();
+  const subtotal = cart.reduce(
+    (sum, item) => sum + resolveProductPrice(item.product, settings) * item.quantity,
+    0
+  );
 
   const fetchCart = async () => {
     try {
@@ -111,7 +118,9 @@ export default function Cart() {
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-medium text-gray-900 truncate">{item.product?.name || 'Product'}</h3>
                         <p className="text-xs text-gray-400 mt-0.5">{item.product?.material || ''}</p>
-                        <p className="text-sm font-medium text-gray-900 mt-2">रु {(item.product?.price || 0).toLocaleString('en-IN')}</p>
+                        <p className="text-sm font-medium text-gray-900 mt-2">
+                          रु {resolveProductPrice(item.product, settings).toLocaleString('en-IN')}
+                        </p>
                         <div className="flex items-center gap-3 mt-3">
                           <button
                             onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
@@ -141,7 +150,7 @@ export default function Cart() {
                 <div className="px-6 py-6 border-t border-gray-100 bg-[#faf9f7]">
                   <div className="flex justify-between mb-6">
                     <span className="text-sm text-gray-500">Subtotal</span>
-                    <span className="text-base font-medium text-gray-900">रु {cartTotal().toLocaleString('en-IN')}</span>
+                    <span className="text-base font-medium text-gray-900">रु {subtotal.toLocaleString('en-IN')}</span>
                   </div>
                   <Link
                     to="/checkout"

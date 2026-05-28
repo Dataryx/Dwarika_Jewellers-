@@ -6,13 +6,14 @@ interface StatCardProps {
   title: string;
   value: string | number;
   change: number;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  iconText?: string;
   iconColor: string;
   iconBg: string;
   delay?: number;
 }
 
-export default function StatCard({ title, value, change, icon: Icon, iconColor, iconBg, delay = 0 }: StatCardProps) {
+export default function StatCard({ title, value, change, icon: Icon, iconText, iconColor, iconBg, delay = 0 }: StatCardProps) {
   const isPositive = change >= 0;
 
   return (
@@ -24,7 +25,11 @@ export default function StatCard({ title, value, change, icon: Icon, iconColor, 
     >
       <div className="flex items-start justify-between mb-4">
         <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
+          {iconText ? (
+            <span className={`text-lg font-bold ${iconColor}`}>{iconText}</span>
+          ) : (
+            Icon && <Icon className={`w-5 h-5 ${iconColor}`} />
+          )}
         </div>
         <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
           isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'

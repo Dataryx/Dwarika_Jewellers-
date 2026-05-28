@@ -120,7 +120,7 @@ export default function Products() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-400">{product.category}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-white">${product.price}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-white">रु {product.price}</td>
                   <td className="px-6 py-4 text-sm text-slate-400">{product.stock}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[product.status]}`}>

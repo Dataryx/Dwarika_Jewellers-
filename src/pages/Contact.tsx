@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Send, Check, Loader2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, Check, Loader2, Facebook, Instagram, Music2 } from 'lucide-react';
 
 interface ContactInfo {
   heroSubtitle: string;
@@ -11,6 +11,9 @@ interface ContactInfo {
   address: string;
   phone: string;
   email: string;
+  facebook: string;
+  instagram: string;
+  tiktok: string;
   openingHours: string;
   mapEmbedUrl: string;
 }
@@ -128,6 +131,37 @@ export default function Contact() {
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900">Opening Hours</h3>
                     <p className="text-sm text-gray-500 mt-1">{nl2br(info.openingHours)}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 bg-[#faf9f7] flex items-center justify-center shrink-0">
+                    <Send className="w-5 h-5 text-[#c9a962]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3 mt-1">
+                      {info.facebook && (
+                        <a href={info.facebook} target="_blank" rel="noreferrer" aria-label="Facebook" className="hover:opacity-90 transition-opacity">
+                          <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Facebook className="w-5 h-5 text-blue-600" />
+                          </span>
+                        </a>
+                      )}
+                      {info.instagram && (
+                        <a href={info.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:opacity-90 transition-opacity">
+                          <span className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                            <Instagram className="w-5 h-5 text-pink-600" />
+                          </span>
+                        </a>
+                      )}
+                      {info.tiktok && (
+                        <a href={info.tiktok} target="_blank" rel="noreferrer" aria-label="TikTok" className="hover:opacity-90 transition-opacity">
+                          <span className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center">
+                            <Music2 className="w-5 h-5 text-cyan-600" />
+                          </span>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

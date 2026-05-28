@@ -4,12 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { useAuth } from '../contexts/AuthContext';
+import { subscribeNewsletter } from '../lib/newsletter';
 import Cart from './Cart';
 import SearchModal from './SearchModal';
 
 const navLinks = [
   { name: 'Shop', path: '/collections' },
   { name: 'About', path: '/about' },
+  { name: 'Help', path: '/help' },
   { name: 'Contact', path: '/contact' },
 ];
 
@@ -18,6 +20,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState('');
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { toggleCart, cartCount } = useStore();
   const { user, signOut } = useAuth();
@@ -61,6 +66,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     await signOut();
     setUserMenuOpen(false);
     navigate('/');
+  };
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewsletterSubmitting(true);
+    setNewsletterMessage('');
+
+    try {
+      const result = await subscribeNewsletter(newsletterEmail);
+      setNewsletterEmail('');
+      setNewsletterMessage(result.alreadySubscribed ? 'You are already subscribed.' : 'Successfully subscribed!');
+    } catch (err) {
+      setNewsletterMessage(err instanceof Error ? err.message : 'Subscription failed');
+    } finally {
+      setNewsletterSubmitting(false);
+    }
   };
 
   return (
@@ -195,19 +216,36 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div>
               <h4 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-6">Help</h4>
               <ul className="space-y-3 text-sm text-gray-500">
-                <li><a href="#" className="hover:text-[#c9a962]">Shipping & Returns</a></li>
+                <li><Link to="/help" className="hover:text-[#c9a962]">Shipping & Returns</Link></li>
                 <li><a href="#" className="hover:text-[#c9a962]">Size Guide</a></li>
-                <li><a href="#" className="hover:text-[#c9a962]">Care</a></li>
+                <li><Link to="/help" className="hover:text-[#c9a962]">Care</Link></li>
                 <li><Link to="/contact" className="hover:text-[#c9a962]">Contact</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-6">Services</h4>
+              <ul className="space-y-3 text-sm text-gray-500">
+                <li><Link to="/exchange-gold" className="hover:text-[#c9a962]">Exchange Gold & Silver</Link></li>
+                <li><Link to="/custom-design" className="hover:text-[#c9a962]">Custom Design</Link></li>
+                <li><Link to="/repair-maintenance" className="hover:text-[#c9a962]">Repair & Maintenance</Link></li>
+                <li><Link to="/certification" className="hover:text-[#c9a962]">Certification</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-6">Newsletter</h4>
               <p className="text-sm text-gray-500 mb-4">Subscribe for exclusive access.</p>
-              <div className="flex gap-2">
-                <input type="email" placeholder="Email" className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#c9a962]" />
-                <button className="px-5 py-2.5 bg-gray-900 text-white text-xs font-medium tracking-wider hover:bg-[#c9a962]">JOIN</button>
-              </div>
+              <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  required
+                  className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#c9a962]"
+                />
+                <button disabled={newsletterSubmitting} className="px-5 py-2.5 bg-gray-900 text-white text-xs font-medium tracking-wider hover:bg-[#c9a962] disabled:opacity-60 disabled:cursor-not-allowed">{newsletterSubmitting ? 'JOINING...' : 'JOIN'}</button>
+              </form>
+              {newsletterMessage && <p className="mt-3 text-xs text-gray-500">{newsletterMessage}</p>}
             </div>
           </div>
           <div className="border-t border-gray-200 mt-16 pt-8 text-center text-xs text-gray-400 tracking-wider">© 2026 DWARIKA. ALL RIGHTS RESERVED.</div>

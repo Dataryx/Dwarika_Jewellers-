@@ -12,6 +12,11 @@ import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import Help from './pages/Help';
+import ExchangeGold from './pages/ExchangeGold';
+import CustomDesign from './pages/CustomDesign';
+import RepairMaintenance from './pages/RepairMaintenance';
+import Certification from './pages/Certification';
 import Login from './pages/Login';
 import Account from './pages/Account';
 import Orders from './pages/Orders';
@@ -84,6 +89,11 @@ function App() {
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
+                    <Route path="/help" element={<Help />} />
+                    <Route path="/exchange-gold" element={<ExchangeGold />} />
+                    <Route path="/custom-design" element={<CustomDesign />} />
+                    <Route path="/repair-maintenance" element={<RepairMaintenance />} />
+                    <Route path="/certification" element={<Certification />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/reset-password" element={<Login />} />
                     <Route path="/account" element={<Account />} />

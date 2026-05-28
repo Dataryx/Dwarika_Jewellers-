@@ -1,15 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>
-    <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#d97706"/>
-      <stop offset="50%" style="stop-color:#e11d48"/>
-      <stop offset="100%" style="stop-color:#d97706"/>
-    </linearGradient>
-  </defs>
-  <polygon points="50,10 85,35 75,85 25,85 15,35" fill="url(#gemGrad)" stroke="#b45309" stroke-width="2"/>
-  <polygon points="50,10 85,35 50,45 15,35" fill="#fbbf24" opacity="0.6"/>
-  <polygon points="50,45 85,35 75,85 50,70" fill="#be185d" opacity="0.4"/>
-  <polygon points="50,45 15,35 25,85 50,70" fill="#fcd34d" opacity="0.3"/>
-  <line x1="50" y1="10" x2="50" y2="45" stroke="#fff" stroke-width="1" opacity="0.5"/>
-  <line x1="15" y1="35" x2="85" y2="35" stroke="#fff" stroke-width="1" opacity="0.3"/>
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#c9a962"/>
+  
+  <!-- Top diamond -->
+  <polygon points="50,8 58,15 50,22 42,15" fill="#faf9f7"/>
+  
+  <!-- Main D letter -->
+  <path d="M 28 30 L 28 70 Q 28 78 36 78 L 45 78 Q 58 78 58 65 L 58 43 Q 58 30 45 30 L 36 30 Q 28 30 28 30 Z" fill="#faf9f7"/>
+  <path d="M 35 40 L 35 68 Q 35 72 40 72 L 48 72 Q 54 72 54 65 L 54 43 Q 54 37 48 37 L 40 37 Q 35 37 35 40 Z" fill="#c9a962"/>
+  
+  <!-- Right small diamond -->
+  <polygon points="70,50 74,54 70,58 66,54" fill="#faf9f7"/>
 </svg>

@@ -3,7 +3,7 @@ import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Email');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
@@ -40,12 +40,15 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const { customer_name, customer_email, items, total, payment_method } = req.body || {};
+      const headerEmail = String(req.headers['x-user-email'] || '').trim().toLowerCase();
+      const normalizedBodyEmail = String(customer_email || '').trim().toLowerCase();
+      const orderEmail = headerEmail || normalizedBodyEmail;
 
       const orderId = await nextSeq('order');
       const orderDoc = {
         _id: orderId,
         customer_name,
-        customer_email,
+        customer_email: orderEmail,
         total: Number(total) || 0,
         payment_method: payment_method || 'cod',
         status: 'pending',
@@ -66,15 +69,15 @@ export default async function handler(req, res) {
 
       await cartCol.deleteMany({});
 
-      if (customer_email) {
+      if (orderEmail) {
         const custCol = db.collection('customers');
         await custCol.updateOne(
-          { _id: customer_email.trim().toLowerCase() },
+          { _id: orderEmail },
           {
             $inc: { total_spent: orderDoc.total, order_count: 1 },
             $set: { name: customer_name || '' },
             $setOnInsert: {
-              email: customer_email.trim().toLowerCase(),
+              email: orderEmail,
               phone: '',
               auth_provider: 'checkout',
               created_at: new Date(),

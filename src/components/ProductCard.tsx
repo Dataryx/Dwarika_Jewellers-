@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { showNotification } from './Notification';
 import { useWishlist } from '../lib/WishlistContext';
 import { cartHeaders } from '../lib/session';
+import { useStoreSettings } from '../lib/useStoreSettings';
+import { resolveProductPrice } from '../lib/pricing';
 
 interface ProductCardProps {
   product: Product;
@@ -16,8 +18,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [adding, setAdding] = useState(false);
   const { setCart } = useStore();
+  const settings = useStoreSettings();
   const { addItem, removeItem, isInWishlist } = useWishlist();
   const liked = isInWishlist(product.id);
+  const displayPrice = resolveProductPrice(product, settings);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,7 +56,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       removeItem(product.id);
       showNotification(`${product.name} removed from wishlist`);
     } else {
-      addItem({ id: product.id, name: product.name, price: product.price, image_url: product.image_url, material: product.material, category: product.category });
+      addItem({ id: product.id, name: product.name, price: displayPrice, image_url: product.image_url, material: product.material, category: product.category });
       showNotification(`${product.name} added to wishlist`);
     }
   };
@@ -84,7 +88,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="mt-4">
           <h3 className="text-sm font-medium text-gray-900 group-hover:text-[#c9a962] transition-colors">{product.name}</h3>
           <p className="text-xs text-gray-400 mt-1">{product.material}</p>
-          <p className="text-sm font-medium text-gray-900 mt-2">रु {product.price.toLocaleString('en-IN')}</p>
+          <p className="text-sm font-medium text-gray-900 mt-2">रु {displayPrice.toLocaleString('en-IN')}</p>
         </div>
       </Link>
     </motion.div>

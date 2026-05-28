@@ -8,7 +8,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const API_ROUTES = new Set(['products', 'orders', 'cart', 'settings', 'banner', 'admin-auth', 'customers', 'categories', 'our-story', 'about', 'contact', 'contact-info'])
+const API_ROUTES = new Set(['products', 'orders', 'cart', 'settings', 'banner', 'admin-auth', 'customers', 'categories', 'our-story', 'about', 'contact', 'contact-info', 'live-prices'])
 
 function createResAdapter(res: ServerResponse) {
   return {

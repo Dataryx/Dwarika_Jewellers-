@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, LayoutTemplate, Package, ShoppingCart, Users, Settings, LogOut,
   Menu, X, Search, Bell, ExternalLink, Hexagon,
-  DollarSign, Clock, AlertTriangle, Grid3X3, BookOpen, FileText, MessageSquare,
+  Clock, AlertTriangle, Grid3X3, BookOpen, FileText, MessageSquare, Download,
 } from 'lucide-react';
 import { Link, NavLink, useLocation, useNavigate, Outlet, useOutletContext } from 'react-router-dom';
 import { useAdminAuth } from '../../lib/adminAuth';
+import Notification from '../../components/Notification';
 
 import StatCard from '../../components/admin/dashboard/StatCard';
 import RevenueChart from '../../components/admin/dashboard/RevenueChart';
@@ -96,8 +98,12 @@ export default function AdminLayout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [topSearch, setTopSearch] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [adminToastMessage, setAdminToastMessage] = useState('');
+  const [showAdminToast, setShowAdminToast] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const hasOrderSnapshotRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, email } = useAdminAuth();
@@ -125,6 +131,24 @@ export default function AdminLayout() {
         const ords = await ordersRes.json();
         const settings = await settingsRes.json();
 
+        const nextOrderIds = new Set<string>(ords.map((o: any) => String(o.id)));
+        if (hasOrderSnapshotRef.current) {
+          const freshOrders = ords.filter((o: any) => !knownOrderIdsRef.current.has(String(o.id)));
+          if (freshOrders.length > 0) {
+            const latest = freshOrders
+              .slice()
+              .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+            setAdminToastMessage(
+              freshOrders.length === 1
+                ? `New order #${latest.id} placed by ${latest.customer_name}`
+                : `${freshOrders.length} new orders have been placed`
+            );
+            setShowAdminToast(true);
+          }
+        }
+        knownOrderIdsRef.current = nextOrderIds;
+        hasOrderSnapshotRef.current = true;
+
         setProducts(prods);
         setOrders(ords);
         if (settings?.storeName) setStoreName(settings.storeName);
@@ -140,6 +164,9 @@ export default function AdminLayout() {
       }
     };
     fetchAll();
+
+    const pollId = window.setInterval(fetchAll, 5000);
+    return () => window.clearInterval(pollId);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -178,9 +205,7 @@ export default function AdminLayout() {
             {/* Logo */}
             <div className="h-16 flex items-center px-6 border-b border-gray-800">
               <Link to="/admin" className="flex items-center gap-3 group">
-                <div className="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center">
-                  <Hexagon className="w-5 h-5 text-gray-950" strokeWidth={2.5} />
-                </div>
+                <img src="/favicon.svg?v=2" alt="Dwarika logo" className="w-9 h-9 shrink-0" />
                 <div>
                   <h1 className="text-lg font-bold text-white leading-tight">{storeName}</h1>
                   <p className="text-xs text-gray-500">Admin Panel</p>
@@ -410,6 +435,13 @@ export default function AdminLayout() {
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
+
+      <Notification
+        key={adminToastMessage}
+        message={adminToastMessage}
+        show={showAdminToast}
+        onClose={() => setShowAdminToast(false)}
+      />
     </div>
   );
 }
@@ -531,6 +563,66 @@ function buildActivityFeed(orders: any[]) {
   return activities;
 }
 
+function formatExportTimestamp(date = new Date()) {
+  return date.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+}
+
+function exportDashboardWorkbook(payload: {
+  stats: AdminOutletContext['stats'];
+  statChanges: AdminOutletContext['statChanges'];
+  revenueData: ReturnType<typeof buildRevenueData>;
+  categoryData: ReturnType<typeof buildCategoryData>;
+  topProducts: ReturnType<typeof buildTopProducts>;
+  orderStatusData: ReturnType<typeof buildOrderStatusData>;
+  recentOrders: any[];
+  activityFeed: ReturnType<typeof buildActivityFeed>;
+  products: any[];
+  orders: any[];
+}) {
+  const workbook = XLSX.utils.book_new();
+
+  const summarySheet = XLSX.utils.json_to_sheet([
+    { metric: 'Total Products', value: payload.stats.totalProducts, month_over_month_change: payload.statChanges.products },
+    { metric: 'Total Orders', value: payload.stats.totalOrders, month_over_month_change: payload.statChanges.orders },
+    { metric: 'Revenue', value: payload.stats.totalRevenue, month_over_month_change: payload.statChanges.revenue },
+    { metric: 'Pending Orders', value: payload.stats.pendingOrders, month_over_month_change: payload.statChanges.pending },
+  ]);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.revenueData), 'Revenue Overview');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.categoryData), 'Category Breakdown');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.orderStatusData), 'Order Status');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.topProducts), 'Top Products');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.recentOrders.map((order) => ({
+    id: order.id,
+    customer_name: order.customer_name,
+    customer_email: order.customer_email,
+    status: order.status,
+    total: Number(order.total || 0),
+    created_at: order.created_at,
+  }))), 'Recent Orders');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.activityFeed), 'Activity Feed');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.orders.map((order) => ({
+    id: order.id,
+    customer_name: order.customer_name,
+    customer_email: order.customer_email,
+    status: order.status,
+    total: Number(order.total || 0),
+    created_at: order.created_at,
+  }))), 'All Orders');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    material: product.material,
+    price: Number(product.price || 0),
+    stock: Number(product.stock || 0),
+    created_at: product.created_at,
+  }))), 'All Products');
+
+  XLSX.writeFile(workbook, `dwarika-dashboard-${formatExportTimestamp()}.xlsx`);
+}
+
 export function AdminDashboard() {
   const { stats, statChanges, products, orders } = useOutletContext<AdminOutletContext>();
 
@@ -544,8 +636,38 @@ export function AdminDashboard() {
     .slice(0, 6);
   const activityFeed = buildActivityFeed(orders);
 
+  const handleExport = () => {
+    exportDashboardWorkbook({
+      stats,
+      statChanges,
+      revenueData,
+      categoryData,
+      topProducts,
+      orderStatusData,
+      recentOrders,
+      activityFeed,
+      products,
+      orders,
+    });
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">Overview of your store activity and performance</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 text-gray-950 text-sm font-semibold hover:bg-amber-400 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Export Excel
+        </button>
+      </div>
+
       {/* Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -570,7 +692,7 @@ export function AdminDashboard() {
           title="Revenue"
           value={`रु ${stats.totalRevenue.toLocaleString('en-IN')}`}
           change={statChanges.revenue}
-          icon={DollarSign}
+          iconText="रु"
           iconColor="text-amber-400"
           iconBg="bg-amber-500/10"
           delay={0.2}
@@ -585,24 +707,6 @@ export function AdminDashboard() {
           delay={0.3}
         />
       </div>
-
-      {/* Homepage Hero Shortcut */}
-      <Link
-        to="/admin/home-banner"
-        className="block bg-gray-800/60 rounded-2xl border border-gray-700 p-5 hover:border-amber-500/40 transition-colors group"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0 group-hover:bg-amber-500/25 transition-colors">
-            <LayoutTemplate className="w-6 h-6 text-amber-400" />
-          </div>
-          <div>
-            <h3 className="text-white font-medium">Homepage Hero</h3>
-            <p className="text-sm text-gray-400 mt-0.5">
-              Change the banner image/video, headlines, and call-to-action
-            </p>
-          </div>
-        </div>
-      </Link>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -2,12 +2,12 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
 const orders = [
-  { id: '#ORD-7829', customer: 'Sarah Mitchell', email: 'sarah.m@email.com', status: 'completed', total: '$284.00', date: '2 min ago' },
-  { id: '#ORD-7828', customer: 'James Cooper', email: 'j.cooper@email.com', status: 'processing', total: '$156.50', date: '15 min ago' },
-  { id: '#ORD-7827', customer: 'Emma Wilson', email: 'emma.w@email.com', status: 'pending', total: '$89.99', date: '32 min ago' },
-  { id: '#ORD-7826', customer: 'Michael Brown', email: 'm.brown@email.com', status: 'completed', total: '$445.00', date: '1 hr ago' },
-  { id: '#ORD-7825', customer: 'Lisa Anderson', email: 'lisa.a@email.com', status: 'cancelled', total: '$67.25', date: '2 hrs ago' },
-  { id: '#ORD-7824', customer: 'David Lee', email: 'd.lee@email.com', status: 'completed', total: '$312.80', date: '3 hrs ago' },
+  { id: '#ORD-7829', customer: 'Sarah Mitchell', email: 'sarah.m@email.com', status: 'completed', total: 'रु 284.00', date: '2 min ago' },
+  { id: '#ORD-7828', customer: 'James Cooper', email: 'j.cooper@email.com', status: 'processing', total: 'रु 156.50', date: '15 min ago' },
+  { id: '#ORD-7827', customer: 'Emma Wilson', email: 'emma.w@email.com', status: 'pending', total: 'रु 89.99', date: '32 min ago' },
+  { id: '#ORD-7826', customer: 'Michael Brown', email: 'm.brown@email.com', status: 'completed', total: 'रु 445.00', date: '1 hr ago' },
+  { id: '#ORD-7825', customer: 'Lisa Anderson', email: 'lisa.a@email.com', status: 'cancelled', total: 'रु 67.25', date: '2 hrs ago' },
+  { id: '#ORD-7824', customer: 'David Lee', email: 'd.lee@email.com', status: 'completed', total: 'रु 312.80', date: '3 hrs ago' },
 ];
 
 const statusStyles: Record<string, string> = {

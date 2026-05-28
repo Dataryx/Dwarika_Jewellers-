@@ -2,11 +2,11 @@ import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 
 const products = [
-  { name: 'Wireless Headphones Pro', sales: 284, revenue: '$42,600', rating: 4.8, trend: '+12%' },
-  { name: 'Smart Watch Series 5', sales: 196, revenue: '$39,200', rating: 4.6, trend: '+8%' },
-  { name: 'Leather Messenger Bag', sales: 152, revenue: '$22,800', rating: 4.9, trend: '+23%' },
-  { name: 'Ceramic Coffee Set', sales: 128, revenue: '$12,800', rating: 4.5, trend: '+5%' },
-  { name: 'Running Shoes Elite', sales: 98, revenue: '$14,700', rating: 4.7, trend: '+15%' },
+  { name: 'Wireless Headphones Pro', sales: 284, revenue: 'रु 42,600', rating: 4.8, trend: '+12%' },
+  { name: 'Smart Watch Series 5', sales: 196, revenue: 'रु 39,200', rating: 4.6, trend: '+8%' },
+  { name: 'Leather Messenger Bag', sales: 152, revenue: 'रु 22,800', rating: 4.9, trend: '+23%' },
+  { name: 'Ceramic Coffee Set', sales: 128, revenue: 'रु 12,800', rating: 4.5, trend: '+5%' },
+  { name: 'Running Shoes Elite', sales: 98, revenue: 'रु 14,700', rating: 4.7, trend: '+15%' },
 ];
 
 export default function TopProducts() {

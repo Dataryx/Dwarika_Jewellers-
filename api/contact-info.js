@@ -11,6 +11,9 @@ const DEFAULT_INFO = {
   address: 'Dwarika Jewellers\nKathmandu, Nepal',
   phone: '+977 01-XXXXXXX',
   email: 'info@dwarikajewellers.com',
+  facebook: 'https://facebook.com/dwarikajewellers',
+  instagram: 'https://instagram.com/dwarikajewellers',
+  tiktok: 'https://tiktok.com/@dwarikajewellers',
   openingHours: 'Sun – Fri: 10:00 AM – 7:00 PM\nSaturday: Closed',
   mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d56516.31397712412!2d85.29111067431641!3d27.70895594!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb198a307baabf%3A0xb5137c1bf18db1ea!2sKathmandu%2044600!5e0!3m2!1sen!2snp!4v1700000000000!5m2!1sen!2snp',
 };

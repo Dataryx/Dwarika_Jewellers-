@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
 interface Order {
   id: number;
@@ -37,12 +38,17 @@ interface RecentOrdersProps {
 }
 
 export default function RecentOrders({ orders }: RecentOrdersProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.max(1, Math.ceil(orders.length / itemsPerPage));
+  const visibleOrders = orders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.4 }}
-      className="bg-gray-800/60 border border-gray-700 rounded-2xl overflow-hidden"
+      className="bg-gray-800/60 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col"
     >
       <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
         <h3 className="text-base font-semibold text-white">Recent Orders</h3>
@@ -51,7 +57,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex-1 min-h-[360px]">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-700">
@@ -68,7 +74,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No orders yet</td>
               </tr>
             ) : (
-              orders.map((order, i) => (
+              visibleOrders.map((order, i) => (
                 <motion.tr
                   key={order.id}
                   initial={{ opacity: 0, x: -10 }}
@@ -96,6 +102,41 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
           </tbody>
         </table>
       </div>
+      {orders.length > 0 && (
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-700">
+          <p className="text-xs text-gray-500">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
+            >
+              Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${page === currentPage ? 'border-[#c9a962] bg-[#c9a962] text-white' : 'border-gray-700 text-gray-300 hover:border-[#c9a962] hover:text-[#c9a962]'}`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

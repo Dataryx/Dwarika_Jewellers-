@@ -15,7 +15,7 @@ export default function TrafficChart() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.45 }}
-      className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6"
+      className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -23,8 +23,9 @@ export default function TrafficChart() {
           <p className="text-sm text-slate-500 mt-0.5">Where your visitors come from</p>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+      <div className="flex-1 min-h-[260px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
           <XAxis dataKey="name" stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
           <YAxis stroke="#475569" fontSize={12} tickLine={false} axisLine={false} />
@@ -39,8 +40,9 @@ export default function TrafficChart() {
             cursor={{ fill: '#1e293b', opacity: 0.5 }}
           />
           <Bar dataKey="visitors" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </motion.div>
   );
 }

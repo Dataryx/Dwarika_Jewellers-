@@ -5,7 +5,7 @@ import { Image, Upload, Type, Link2, Eye, Save, RotateCcw } from 'lucide-react';
 export default function HomeBanner() {
   const [banner, setBanner] = useState({
     headline: 'Discover Premium Quality Products',
-    subheadline: 'Curated collection for the modern lifestyle. Free shipping on orders over $50.',
+    subheadline: 'Curated collection for the modern lifestyle. Free shipping on orders over रु 50.',
     ctaText: 'Shop Now',
     ctaLink: '/shop',
     overlayOpacity: 40,

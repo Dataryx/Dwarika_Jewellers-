@@ -7,6 +7,12 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
+    const numOrUndefined = (value) => {
+      if (value === undefined || value === null || value === '') return undefined;
+      const n = Number(value);
+      return Number.isFinite(n) ? n : undefined;
+    };
+
     const db = await getMongoDb();
     const products = db.collection('products');
     const { id, category, featured } = req.query;
@@ -35,6 +41,12 @@ export default async function handler(req, res) {
         name: body.name ?? '',
         description: body.description ?? '',
         price: Number(body.price) || 0,
+        product_type: body.product_type ?? 'both',
+        gold_weight_14k: Number(body.gold_weight_14k) || 0,
+        diamond_weight_carat: Number(body.diamond_weight_carat) || 0,
+        labour_charge: Number(body.labour_charge) || 0,
+        gold_extra_charge: Number(body.gold_extra_charge) || 0,
+        diamond_extra_charge: Number(body.diamond_extra_charge) || 0,
         image_url: body.image_url ?? '',
         category: body.category ?? 'rings',
         material: body.material ?? '',
@@ -55,11 +67,17 @@ export default async function handler(req, res) {
       const $set = {
         name: raw.name,
         description: raw.description,
-        price: raw.price !== undefined ? Number(raw.price) : undefined,
+        price: numOrUndefined(raw.price),
+        product_type: raw.product_type,
+        gold_weight_14k: numOrUndefined(raw.gold_weight_14k),
+        diamond_weight_carat: numOrUndefined(raw.diamond_weight_carat),
+        labour_charge: numOrUndefined(raw.labour_charge),
+        gold_extra_charge: numOrUndefined(raw.gold_extra_charge),
+        diamond_extra_charge: numOrUndefined(raw.diamond_extra_charge),
         image_url: raw.image_url,
         category: raw.category,
         material: raw.material,
-        stock: raw.stock !== undefined ? Number(raw.stock) : undefined,
+        stock: numOrUndefined(raw.stock),
         featured: raw.featured,
       };
       Object.keys($set).forEach((k) => $set[k] === undefined && delete $set[k]);

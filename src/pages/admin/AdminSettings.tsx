@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Truck, CreditCard, Bell, Shield, Save, Check, Loader2 } from 'lucide-react';
+import { Truck, CreditCard, Bell, Shield, Save, Check, Loader2, Gem } from 'lucide-react';
 import { invalidateSettingsCache } from '../../lib/useStoreSettings';
 
 const tabs = [
+  { id: 'pricing', label: 'Pricing', icon: Gem },
   { id: 'shipping', label: 'Shipping & Tax', icon: Truck },
   { id: 'payments', label: 'Payments', icon: CreditCard },
   { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -14,6 +15,11 @@ type TabId = (typeof tabs)[number]['id'];
 
 interface StoreSettings {
   taxRate: number;
+  baseGoldRatePerGram: number;
+  goldRatePerGram: number;
+  diamondRatePerCarat: number;
+  goldMakingChargeRate: number;
+  gramsPerTola: number;
   freeShippingThreshold: number;
   standardShippingRate: number;
   expressShippingRate: number;
@@ -24,6 +30,11 @@ interface StoreSettings {
 
 const DEFAULTS: StoreSettings = {
   taxRate: 13,
+  baseGoldRatePerGram: 16358,
+  goldRatePerGram: 16358,
+  diamondRatePerCarat: 28000,
+  goldMakingChargeRate: 0.4,
+  gramsPerTola: 11.664,
   freeShippingThreshold: 5000,
   standardShippingRate: 150,
   expressShippingRate: 350,
@@ -46,7 +57,7 @@ const DEFAULTS: StoreSettings = {
 };
 
 export default function AdminSettings() {
-  const [activeTab, setActiveTab] = useState<TabId>('shipping');
+  const [activeTab, setActiveTab] = useState<TabId>('pricing');
   const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -160,6 +171,7 @@ export default function AdminSettings() {
         transition={{ duration: 0.3 }}
         className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-6"
       >
+        {activeTab === 'pricing' && <PricingSettings settings={settings} update={update} />}
         {activeTab === 'shipping' && <ShippingSettings settings={settings} update={update} />}
         {activeTab === 'payments' && <PaymentSettings settings={settings} update={update} />}
         {activeTab === 'notifications' && <NotificationSettings settings={settings} update={update} />}
@@ -190,6 +202,88 @@ type SettingsProps = {
   settings: StoreSettings;
   update: <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) => void;
 };
+
+function PricingSettings({ settings, update }: SettingsProps) {
+  const [pricingTab, setPricingTab] = useState<'gold' | 'diamond'>('gold');
+
+  return (
+    <div className="space-y-5">
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button
+          onClick={() => setPricingTab('gold')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            pricingTab === 'gold'
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+              : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
+          }`}
+        >
+          Gold
+        </button>
+        <button
+          onClick={() => setPricingTab('diamond')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+            pricingTab === 'diamond'
+              ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+              : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
+          }`}
+        >
+          Diamond
+        </button>
+      </div>
+
+      {pricingTab === 'gold' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className={labelClass}>Master Gold Rate (रु / gram)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={settings.goldRatePerGram}
+              onChange={(e) => update('goldRatePerGram', Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Grams Per Tola</label>
+            <input
+              type="number"
+              step="0.001"
+              value={settings.gramsPerTola}
+              onChange={(e) => update('gramsPerTola', Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Gold Making Charge Rate</label>
+            <input
+              type="number"
+              step="0.01"
+              value={settings.goldMakingChargeRate}
+              onChange={(e) => update('goldMakingChargeRate', Number(e.target.value))}
+              className={inputClass}
+            />
+          </div>
+        </div>
+      )}
+
+      {pricingTab === 'diamond' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className={labelClass}>Master Diamond Rate (रु / carat)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={settings.diamondRatePerCarat}
+              onChange={(e) => update('diamondRatePerCarat', Number(e.target.value))}
+              className={inputClass}
+            />
+            <p className="text-xs text-gray-500 mt-1">Used for dynamic diamond pricing across storefront</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ShippingSettings({ settings, update }: SettingsProps) {
   return (

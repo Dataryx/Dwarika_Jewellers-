@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, CreditCard, Banknote, Clock, Wallet, LogIn, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useStoreSettings } from '../lib/useStoreSettings';
 import { formatPrice } from '../lib/currency';
 import { cartHeaders } from '../lib/session';
 import { useAuth } from '../contexts/AuthContext';
+import { resolveProductPrice } from '../lib/pricing';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   'Cash on Delivery': <Banknote className="w-5 h-5 text-gray-600" />,
@@ -19,7 +20,7 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
 const FUNCTIONAL_METHODS = new Set(['Cash on Delivery']);
 
 export default function Checkout() {
-  const { cart, cartTotal, clearCart } = useStore();
+  const { cart, clearCart } = useStore();
   const navigate = useNavigate();
   const settings = useStoreSettings();
   const { user, loading: authLoading } = useAuth();
@@ -37,10 +38,19 @@ export default function Checkout() {
     zip: '',
   });
 
+  useEffect(() => {
+    if (user?.email) {
+      setFormData((prev) => ({ ...prev, email: user.email || '' }));
+    }
+  }, [user?.email]);
+
   const taxRate = (settings?.taxRate ?? 13) / 100;
   const freeThreshold = settings?.freeShippingThreshold ?? 5000;
   const shippingRate = settings?.standardShippingRate ?? 150;
-  const subtotal = cartTotal();
+  const subtotal = cart.reduce(
+    (sum, item) => sum + resolveProductPrice(item.product, settings) * item.quantity,
+    0
+  );
   const shipping = subtotal >= freeThreshold ? 0 : shippingRate;
   const tax = Math.round(subtotal * taxRate);
   const total = subtotal + shipping + tax;
@@ -63,14 +73,17 @@ export default function Checkout() {
     try {
       await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(user?.email ? { 'X-User-Email': user.email } : {}),
+        },
         body: JSON.stringify({
           customer_name: `${formData.firstName} ${formData.lastName}`,
-          customer_email: formData.email,
+          customer_email: user?.email || formData.email,
           items: cart.map(item => ({
             product_id: item.product_id,
             quantity: item.quantity,
-            price: item.product.price,
+            price: resolveProductPrice(item.product, settings),
           })),
           total,
           payment_method: paymentMethod,
@@ -186,7 +199,7 @@ export default function Checkout() {
                   <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
                   <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
                 </div>
-                <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required className="w-full mt-4 px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
+                <input type="email" name="email" placeholder="Email" value={formData.email} readOnly required className="w-full mt-4 px-4 py-3 bg-gray-100 border-0 text-sm text-gray-500 focus:outline-none" />
                 <input type="tel" name="phone" placeholder="Phone" value={formData.phone} onChange={handleChange} required className="w-full mt-4 px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
               </div>
 
@@ -302,7 +315,7 @@ export default function Checkout() {
                       <p className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity}</p>
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      {formatPrice((item.product?.price || 0) * item.quantity)}
+                      {formatPrice(resolveProductPrice(item.product, settings) * item.quantity)}
                     </p>
                   </div>
                 ))}

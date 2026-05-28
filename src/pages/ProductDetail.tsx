@@ -9,6 +9,7 @@ import { useWishlist } from '../lib/WishlistContext';
 import { useStoreSettings } from '../lib/useStoreSettings';
 import { formatPrice } from '../lib/currency';
 import { cartHeaders } from '../lib/session';
+import { resolveProductPrice } from '../lib/pricing';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -21,6 +22,7 @@ export default function ProductDetail() {
   const { setCart } = useStore();
   const { addItem, removeItem, isInWishlist } = useWishlist();
   const liked = product ? isInWishlist(product.id) : false;
+  const displayPrice = product ? resolveProductPrice(product, storeSettings) : 0;
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -65,7 +67,7 @@ export default function ProductDetail() {
       removeItem(product.id);
       showNotification(`${product.name} removed from wishlist`);
     } else {
-      addItem({ id: product.id, name: product.name, price: product.price, image_url: product.image_url, material: product.material, category: product.category });
+      addItem({ id: product.id, name: product.name, price: displayPrice, image_url: product.image_url, material: product.material, category: product.category });
       showNotification(`${product.name} added to wishlist`);
     }
   };
@@ -96,7 +98,7 @@ export default function ProductDetail() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="py-8">
             <span className="text-xs font-medium tracking-[0.2em] uppercase text-[#c9a962]">{product.category}</span>
             <h1 className="text-3xl sm:text-4xl font-serif font-medium text-gray-900 mt-3">{product.name}</h1>
-            <p className="text-2xl font-medium text-gray-900 mt-6">रु {product.price.toLocaleString('en-IN')}</p>
+            <p className="text-2xl font-medium text-gray-900 mt-6">रु {displayPrice.toLocaleString('en-IN')}</p>
             <p className="text-gray-500 leading-relaxed mt-8">{product.description}</p>
             <div className="mt-6 flex items-center gap-3">
               <span className="text-xs text-gray-400 uppercase tracking-wider">Material:</span>
