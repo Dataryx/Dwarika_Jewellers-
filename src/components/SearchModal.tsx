@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Product } from '../lib/store';
 import { useStoreSettings } from '../lib/useStoreSettings';
 import { resolveProductPrice } from '../lib/pricing';
+import { apiFetch } from '../lib/apiUrl';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
       setLoading(true);
       try {
-        const res = await fetch('/api/products');
+        const res = await apiFetch('/api/products');
         const data = await res.json();
         const filtered = data.filter((p: Product) =>
           p.name.toLowerCase().includes(query.toLowerCase()) ||

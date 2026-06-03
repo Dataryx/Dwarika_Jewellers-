@@ -322,9 +322,9 @@ export default function Help() {
               >
                 <button
                   onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-white hover:bg-[#faf9f7] transition-colors"
+                  className="w-full px-4 sm:px-6 py-4 flex items-center justify-between gap-4 bg-white hover:bg-[#faf9f7] transition-colors text-left"
                 >
-                  <h3 className="text-left font-semibold text-gray-900">{item.question}</h3>
+                  <h3 className="text-left font-semibold text-gray-900 pr-2 line-clamp-2">{item.question}</h3>
                   <motion.div
                     animate={{ rotate: expandedFAQ === index ? 180 : 0 }}
                     transition={{ duration: 0.3 }}

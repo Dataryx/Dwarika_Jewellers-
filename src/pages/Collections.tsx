@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { Product } from '../lib/store';
+import { apiFetch } from '../lib/apiUrl';
 
 export default function Collections() {
   const { category } = useParams();
@@ -13,7 +14,7 @@ export default function Collections() {
   const [categories, setCategories] = useState<{ id: string; label: string }[]>([{ id: 'all', label: 'All' }]);
 
   useEffect(() => {
-    fetch('/api/categories')
+    apiFetch('/api/categories')
       .then((r) => r.json())
       .then((data: { slug: string; name: string }[]) => {
         setCategories([
@@ -31,7 +32,7 @@ export default function Collections() {
         const url = selectedCategory && selectedCategory !== 'all' 
           ? `/api/products?category=${selectedCategory}`
           : '/api/products';
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         let data = await res.json();
         
         if (sortBy === 'price-low') {

@@ -140,7 +140,7 @@ export default function ExchangeGold() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1], delay: index * 0.1 }}
-                className="flex items-center gap-8"
+                className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8"
               >
                 <div className="flex-shrink-0">
                   <div className="flex items-center justify-center h-20 w-20 rounded-full bg-white border-2 border-[#c9a962]">

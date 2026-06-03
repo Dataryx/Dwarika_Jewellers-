@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const data = [
-  { name: 'Electronics', value: 35, color: '#f59e0b' },
+  { name: 'Electronics', value: 35, color: '#8b5cf6' },
   { name: 'Fashion', value: 25, color: '#8b5cf6' },
   { name: 'Home', value: 20, color: '#10b981' },
   { name: 'Sports', value: 12, color: '#3b82f6' },

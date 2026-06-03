@@ -7,11 +7,13 @@ import LivePriceStrip from '../components/LivePriceStrip';
 import { Product } from '../lib/store';
 import { subscribeNewsletter } from '../lib/newsletter';
 import {
-  getHomepageBanner,
   fetchHomepageBanner,
+  DEFAULT_HOME_BANNER,
   subscribeHomepageBanner,
   type HomeBannerConfig,
 } from '../lib/homepageBanner';
+import { apiFetch } from '../lib/apiUrl';
+import { useVisibleCarouselCount } from '../lib/useMediaQuery';
 
 interface Category { id: number; name: string; slug: string; image_url: string; }
 interface StoryContent { imageUrl: string; title: string; paragraph1: string; paragraph2: string; }
@@ -33,7 +35,7 @@ const DEFAULT_STORY: StoryContent = {
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [banner, setBanner] = useState<HomeBannerConfig>(() => getHomepageBanner());
+  const [banner, setBanner] = useState<HomeBannerConfig>(() => ({ ...DEFAULT_HOME_BANNER }));
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [story, setStory] = useState<StoryContent>(DEFAULT_STORY);
   const [categorySlide, setCategorySlide] = useState(0);
@@ -41,6 +43,18 @@ export default function Home() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [newsletterMessage, setNewsletterMessage] = useState('');
+  const visibleCount = useVisibleCarouselCount();
+  const maxCategorySlide = Math.max(0, categories.length - visibleCount);
+  const maxFeaturedSlide = Math.max(0, featuredProducts.length - visibleCount);
+  const slideStep = visibleCount === 4 ? 'calc(25% + 0.375rem)' : 'calc(50% + 0.5rem)';
+
+  useEffect(() => {
+    setCategorySlide((s) => Math.min(s, maxCategorySlide));
+  }, [maxCategorySlide]);
+
+  useEffect(() => {
+    setFeaturedSlide((s) => Math.min(s, maxFeaturedSlide));
+  }, [maxFeaturedSlide]);
 
   useEffect(() => {
     fetchHomepageBanner().then(setBanner);
@@ -66,18 +80,18 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetch('/api/products?featured=true')
+    apiFetch('/api/products?featured=true')
       .then((r) => r.json())
       .then(setFeaturedProducts)
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    fetch('/api/categories')
+    apiFetch('/api/categories')
       .then((r) => r.json())
       .then((data) => { if (data.length > 0) setCategories(data); })
       .catch(() => {});
 
-    fetch('/api/about')
+    apiFetch('/api/about')
       .then((r) => r.json())
       .then((data) => {
         if (data.storyImage || data.storyTitle) {
@@ -96,7 +110,7 @@ export default function Home() {
     <div className="overflow-hidden">
       <LivePriceStrip />
       {/* Hero — full-screen banner */}
-      <section className="relative h-screen flex items-center overflow-hidden">
+      <section className="relative min-h-[85vh] sm:min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <motion.div
             initial={{ scale: 1.06, opacity: 0 }}
@@ -131,7 +145,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-              className="text-6xl sm:text-7xl md:text-8xl lg:text-8xl xl:text-9xl font-serif font-medium leading-[1.05] tracking-tight text-white drop-shadow-md"
+              className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-medium leading-[1.05] tracking-tight text-white drop-shadow-md"
             >
               {banner.titleLine1}
               <br />
@@ -208,16 +222,16 @@ export default function Home() {
             <button
               onClick={() => setCategorySlide(Math.max(0, categorySlide - 1))}
               disabled={categorySlide === 0}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 lg:-translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 sm:-translate-x-4 lg:-translate-x-12 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-md"
               aria-label="Previous categories"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
 
             <button
-              onClick={() => setCategorySlide(Math.min(Math.max(0, categories.length - 4), categorySlide + 1))}
-              disabled={categorySlide >= categories.length - 4}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 lg:translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              onClick={() => setCategorySlide(Math.min(maxCategorySlide, categorySlide + 1))}
+              disabled={categorySlide >= maxCategorySlide}
+              className="absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 sm:translate-x-4 lg:translate-x-12 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-md"
               aria-label="Next categories"
             >
               <ChevronRight className="w-5 h-5" />
@@ -227,7 +241,7 @@ export default function Home() {
             <div className="overflow-hidden">
               <motion.div
                 className="flex gap-4 lg:gap-6 w-full"
-                animate={{ x: `calc(-1 * ${categorySlide} * (25% + 0.375rem))` }}
+                animate={{ x: `calc(-1 * ${categorySlide} * (${slideStep}))` }}
                 transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
               >
                 {categories.map((category, i) => (
@@ -266,8 +280,8 @@ export default function Home() {
       </section>
 
       {/* Featured Products */}
-      <section className="py-24 bg-[#faf9f7]">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
+      <section className="py-12 sm:py-24 bg-[#faf9f7]">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -295,16 +309,16 @@ export default function Home() {
               <button
                 onClick={() => setFeaturedSlide(Math.max(0, featuredSlide - 1))}
                 disabled={featuredSlide === 0}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 lg:-translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                className="absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 sm:-translate-x-4 lg:-translate-x-12 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-md"
                 aria-label="Previous featured products"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
 
               <button
-                onClick={() => setFeaturedSlide(Math.min(Math.max(0, featuredProducts.length - 4), featuredSlide + 1))}
-                disabled={featuredSlide >= featuredProducts.length - 4}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 lg:translate-x-16 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setFeaturedSlide(Math.min(maxFeaturedSlide, featuredSlide + 1))}
+                disabled={featuredSlide >= maxFeaturedSlide}
+                className="absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 sm:translate-x-4 lg:translate-x-12 z-10 p-2 rounded-full bg-[#c9a962] text-white hover:bg-[#b39452] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-md"
                 aria-label="Next featured products"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -313,7 +327,7 @@ export default function Home() {
               <div className="overflow-hidden">
                 <motion.div
                   className="flex gap-6 lg:gap-8 w-full"
-                  animate={{ x: `calc(-1 * ${featuredSlide} * (25% + 1.125rem))` }}
+                  animate={{ x: `calc(-1 * ${featuredSlide} * (${visibleCount === 4 ? 'calc(25% + 1.125rem)' : 'calc(50% + 0.75rem)'}))` }}
                   transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
                 >
                   {featuredProducts.map((product, i) => (
@@ -362,7 +376,7 @@ export default function Home() {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute -bottom-8 -right-8 w-48 h-48 bg-[#c9a962]/10 -z-10" />
+              <div className="absolute -bottom-4 -right-4 sm:-bottom-8 sm:-right-8 w-32 h-32 sm:w-48 sm:h-48 bg-[#c9a962]/10 -z-10" />
             </motion.div>
             
             <motion.div

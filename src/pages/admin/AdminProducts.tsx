@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Search, Filter, X, Save, Package, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Edit2, Trash2, Search, Filter, X, Save, Package, Eye, ExternalLink } from 'lucide-react';
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
 import { showNotification } from '../../components/Notification';
 import { useStoreSettings } from '../../lib/useStoreSettings';
 import { resolveProductPrice } from '../../lib/pricing';
+import { adminFetch } from '../../lib/adminApi';
+import { storefrontUrl } from '../../lib/storefrontUrl';
 
 interface Product {
   id: number;
@@ -27,9 +29,11 @@ interface Product {
 
 const stockStatus = (stock: number) => {
   if (stock === 0) return { label: 'Out of Stock', style: 'bg-red-500/10 text-red-400 border-red-500/20' };
-  if (stock < 5) return { label: 'Low Stock', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+  if (stock < 5) return { label: 'Low Stock', style: 'bg-violet-500/10 text-violet-400 border-violet-500/20' };
   return { label: 'In Stock', style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
 };
+
+const PAGE_SIZE = 10;
 
 export default function AdminProducts() {
   return <Outlet />;
@@ -41,6 +45,8 @@ export function AdminProductList() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const navigate = useNavigate();
   const settings = useStoreSettings();
 
@@ -48,10 +54,23 @@ export function AdminProductList() {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryFilter, stockFilter]);
+
+  useEffect(() => {
+    if (!viewingProduct) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setViewingProduct(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [viewingProduct]);
+
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/products');
+      const res = await adminFetch('/api/products');
       const data = await res.json();
       setProducts(data);
     } catch (err) {
@@ -64,7 +83,7 @@ export function AdminProductList() {
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
-      await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
+      await adminFetch(`/api/products?id=${id}`, { method: 'DELETE' });
       setProducts(products.filter(p => p.id !== id));
     } catch (err) {
       console.error('Failed to delete product:', err);
@@ -83,7 +102,28 @@ export function AdminProductList() {
     return matchesSearch && matchesCategory && matchesStock;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedProducts = filteredProducts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeStart = filteredProducts.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, filteredProducts.length);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE) || 1)));
+  }, [filteredProducts.length]);
+
   const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
+
+  const pageNumbers = (() => {
+    const maxButtons = 5;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    let start = Math.max(1, safePage - 2);
+    const end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  })();
 
   return (
     <div className="space-y-6">
@@ -95,11 +135,15 @@ export function AdminProductList() {
       >
         <div>
           <h3 className="text-xl font-semibold text-white">Products</h3>
-          <p className="text-sm text-gray-500 mt-1">Manage your product catalog</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {loading
+              ? 'Manage your product catalog'
+              : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'} · ${PAGE_SIZE} per page`}
+          </p>
         </div>
         <button
-          onClick={() => navigate('/admin/products/new')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl transition-colors text-sm"
+          onClick={() => navigate('/products/new')}
+          className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
           Add Product
@@ -120,13 +164,13 @@ export function AdminProductList() {
             placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500/50 transition-all capitalize"
+          className="px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all capitalize"
         >
           {categories.map(cat => (
             <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>
@@ -140,7 +184,7 @@ export function AdminProductList() {
               onClick={() => setStockFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors border ${
                 stockFilter === f
-                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                  ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
                   : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-300'
               }`}
             >
@@ -182,7 +226,7 @@ export function AdminProductList() {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product, i) => {
+                paginatedProducts.map((product, i) => {
                   const status = stockStatus(product.stock);
                   return (
                     <motion.tr
@@ -212,21 +256,36 @@ export function AdminProductList() {
                       <td className="px-6 py-4 text-sm text-gray-400">{product.stock}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${status.style}`}>
-                          {product.featured && <span className="text-amber-500 mr-1.5">★</span>}
+                          {product.featured && <span className="text-violet-500 mr-1.5">★</span>}
                           {status.label}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => navigate(`/admin/products/edit/${product.id}`)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                            type="button"
+                            onClick={() => setViewingProduct(product)}
+                            title="View"
+                            aria-label={`View ${product.name}`}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-500/10 text-gray-400 hover:text-violet-400 transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/products/edit/${product.id}`)}
+                            title="Update"
+                            aria-label={`Update ${product.name}`}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-500/10 text-gray-400 hover:text-amber-400 transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDelete(product.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700 text-gray-400 hover:text-red-400 transition-colors"
+                            title="Delete"
+                            aria-label={`Delete ${product.name}`}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -239,7 +298,204 @@ export function AdminProductList() {
             </tbody>
           </table>
         </div>
+        {!loading && filteredProducts.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-t border-gray-700">
+            <p className="text-sm text-gray-500">
+              Showing {rangeStart}–{rangeEnd} of {filteredProducts.length}
+              <span className="hidden sm:inline text-gray-600"> · {PAGE_SIZE} per page</span>
+            </p>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              {pageNumbers.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPage(n)}
+                  className={`min-w-[2.25rem] px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    n === safePage
+                      ? 'border-violet-500/50 bg-violet-500/10 text-violet-400'
+                      : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </motion.div>
+
+      {/* View modal */}
+      <AnimatePresence>
+        {viewingProduct && (() => {
+          const status = stockStatus(viewingProduct.stock);
+          const productType = viewingProduct.product_type || 'both';
+          const showGold = productType === 'gold' || productType === 'both';
+          const showDiamond = productType === 'diamond' || productType === 'both';
+          const resolvedPrice = resolveProductPrice(viewingProduct as any, settings);
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6"
+              onClick={() => setViewingProduct(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="view-product-heading"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-lg bg-gray-900 border border-violet-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl"
+              >
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                      <Eye className="w-5 h-5 text-violet-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 id="view-product-heading" className="text-base font-semibold text-white truncate">
+                        Product details
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5">Read-only catalog information</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewingProduct(null)}
+                    className="p-2 text-gray-500 hover:text-white shrink-0"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                  {viewingProduct.image_url && (
+                    <div className="rounded-xl overflow-hidden border border-gray-700/80 bg-gray-800/50">
+                      <img
+                        src={viewingProduct.image_url}
+                        alt={viewingProduct.name}
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Name</p>
+                    <p className="text-sm text-white font-medium">{viewingProduct.name}</p>
+                    {viewingProduct.description && (
+                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">{viewingProduct.description}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Category</p>
+                      <p className="text-sm text-gray-300 capitalize">{viewingProduct.category || '—'}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Material</p>
+                      <p className="text-sm text-gray-300">{viewingProduct.material || '—'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Price</p>
+                      <p className="text-sm text-white font-medium">
+                        रु {resolvedPrice.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Type</p>
+                      <p className="text-sm text-gray-300 capitalize">{productType}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Stock</p>
+                      <p className="text-sm text-gray-300">{viewingProduct.stock}</p>
+                    </div>
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Status</p>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${status.style}`}>
+                        {viewingProduct.featured && <span className="text-violet-500 mr-1.5">★</span>}
+                        {status.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {(showGold || showDiamond) && (
+                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4 space-y-2">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Pricing breakdown</p>
+                      {showGold && viewingProduct.gold_weight_14k != null && (
+                        <p className="text-xs text-gray-400">
+                          Gold (14K): <span className="text-gray-300">{viewingProduct.gold_weight_14k} g</span>
+                        </p>
+                      )}
+                      {showDiamond && viewingProduct.diamond_weight_carat != null && (
+                        <p className="text-xs text-gray-400">
+                          Diamond: <span className="text-gray-300">{viewingProduct.diamond_weight_carat} ct</span>
+                        </p>
+                      )}
+                      {viewingProduct.labour_charge != null && Number(viewingProduct.labour_charge) > 0 && (
+                        <p className="text-xs text-gray-400">
+                          Labour: <span className="text-gray-300">रु {Number(viewingProduct.labour_charge).toLocaleString('en-IN')}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-5 border-t border-gray-700/80">
+                  <a
+                    href={storefrontUrl(`/product/${viewingProduct.id}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-700 text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View on store
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = viewingProduct.id;
+                      setViewingProduct(null);
+                      navigate(`/products/edit/${id}`);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/90 text-gray-900 text-sm font-semibold hover:bg-amber-400 transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Edit product
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
@@ -276,7 +532,7 @@ export function AdminProductForm() {
   const showDiamondFields = formData.product_type === 'diamond' || formData.product_type === 'both';
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.json()).then(setApiCategories).catch(() => {});
+    adminFetch('/api/categories').then(r => r.json()).then(setApiCategories).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -286,7 +542,7 @@ export function AdminProductForm() {
   const fetchProduct = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?id=${id}`);
+      const res = await adminFetch(`/api/products?id=${id}`);
       const data = await res.json();
       setLoadedProduct(data);
       setOriginalType(data.product_type ?? 'both');
@@ -395,7 +651,7 @@ export function AdminProductForm() {
         stock: Number(formData.stock),
       };
 
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -407,7 +663,7 @@ export function AdminProductForm() {
       if (!savedId) throw new Error('Saved product ID missing');
 
       // Round-trip verification to ensure DB persistence.
-      const verifyRes = await fetch(`/api/products?id=${savedId}`);
+      const verifyRes = await adminFetch(`/api/products?id=${savedId}`);
       const verified = await verifyRes.json();
       const verifiedOk =
         String(verified?.name ?? '') === String(payload.name ?? '') &&
@@ -426,7 +682,7 @@ export function AdminProductForm() {
       }
 
       showNotification('Saved to database successfully.');
-      navigate('/admin/products');
+      navigate('/products');
     } catch (err) {
       console.error('Failed to save product:', err);
       showNotification('Failed to save product.');
@@ -438,7 +694,7 @@ export function AdminProductForm() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -447,7 +703,7 @@ export function AdminProductForm() {
     <div className="max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/admin/products')}
+          onClick={() => navigate('/products')}
           className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
         >
           <X className="w-4 h-4" />
@@ -469,7 +725,7 @@ export function AdminProductForm() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
           />
         </div>
 
@@ -480,7 +736,7 @@ export function AdminProductForm() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={4}
             required
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all resize-none"
+            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all resize-none"
           />
         </div>
 
@@ -496,7 +752,7 @@ export function AdminProductForm() {
               value={formData.product_type}
               onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
               disabled={Boolean(id) && !allowTypeChange}
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
             >
               <option value="gold">Gold</option>
               <option value="diamond">Diamond</option>
@@ -518,13 +774,13 @@ export function AdminProductForm() {
                     setAllowTypeChange(true);
                   }
                 }}
-                className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
+                className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-500/10 text-violet-500 border border-violet-500/30 hover:bg-violet-500/20 transition-colors"
               >
                 Enable Type Change
               </button>
             )}
             {id && allowTypeChange && formData.product_type !== originalType && (
-              <p className="text-xs text-amber-400 mt-2">
+              <p className="text-xs text-violet-400 mt-2">
                 Type changed from <span className="capitalize">{originalType === 'both' ? 'Gold + Diamond' : originalType}</span> to{' '}
                 <span className="capitalize">{formData.product_type === 'both' ? 'Gold + Diamond' : formData.product_type}</span>.
                 Save to apply.
@@ -543,7 +799,7 @@ export function AdminProductForm() {
               onChange={(e) => !isAutoPricedType && setFormData({ ...formData, price: e.target.value })}
               readOnly={isAutoPricedType}
               required
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
             />
             <p className="text-xs text-gray-500 mt-1">
               {isAutoPricedType ? '' : 'Manual price entry for selected product type'}
@@ -560,19 +816,21 @@ export function AdminProductForm() {
                 step="0.001"
                 value={formData.gold_weight_14k}
                 onChange={(e) => setFormData({ ...formData, gold_weight_14k: e.target.value })}
-                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-white mb-2 block">Labour Charge (रु)</label>
-              <input
-                type="number"
-                step="1"
-                value={formData.labour_charge}
-                onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
-                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
-              />
-            </div>
+            {formData.product_type === 'gold' && (
+              <div>
+                <label className="text-sm font-medium text-white mb-2 block">Labour Charge (रु)</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={formData.labour_charge}
+                  onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                />
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium text-white mb-2 block">Gold Extra Charge (रु)</label>
               <input
@@ -580,7 +838,7 @@ export function AdminProductForm() {
                 step="1"
                 value={formData.gold_extra_charge}
                 onChange={(e) => setFormData({ ...formData, gold_extra_charge: e.target.value })}
-                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
               />
               <p className="text-xs text-gray-500 mt-1">Any additional gold-side cost (e.g. transport/other)</p>
             </div>
@@ -597,7 +855,7 @@ export function AdminProductForm() {
                   step="0.001"
                   value={formData.diamond_weight_carat}
                   onChange={(e) => setFormData({ ...formData, diamond_weight_carat: e.target.value })}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 />
               </div>
               <div>
@@ -607,9 +865,20 @@ export function AdminProductForm() {
                   step="1"
                   value={formData.diamond_extra_charge}
                   onChange={(e) => setFormData({ ...formData, diamond_extra_charge: e.target.value })}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 />
                 <p className="text-xs text-gray-500 mt-1">Any additional diamond-side cost/markup</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-white mb-2 block">Labour Charge (रु)</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={formData.labour_charge}
+                  onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
+                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-1">Added to the calculated diamond selling price</p>
               </div>
             </div>
 
@@ -624,7 +893,7 @@ export function AdminProductForm() {
               value={formData.stock}
               onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
               required
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
             />
           </div>
         </div>
@@ -635,7 +904,7 @@ export function AdminProductForm() {
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
             >
               {apiCategories.map(c => (
                 <option key={c.slug} value={c.slug}>{c.name}</option>
@@ -650,7 +919,7 @@ export function AdminProductForm() {
               onChange={(e) => setFormData({ ...formData, material: e.target.value })}
               placeholder="e.g., 18k Gold, Diamond"
               required
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
             />
           </div>
         </div>
@@ -668,7 +937,7 @@ export function AdminProductForm() {
             type="checkbox"
             checked={formData.featured}
             onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-            className="w-4 h-4 accent-amber-500 rounded"
+            className="w-4 h-4 accent-violet-500 rounded"
           />
           <div>
             <p className="text-sm text-white">Featured product</p>
@@ -680,14 +949,14 @@ export function AdminProductForm() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Product'}
           </button>
           <button
             type="button"
-            onClick={() => navigate('/admin/products')}
+            onClick={() => navigate('/products')}
             className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-xl transition-colors text-sm border border-gray-700"
           >
             Cancel

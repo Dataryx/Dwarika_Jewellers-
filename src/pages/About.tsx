@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
+import { apiFetch } from '../lib/apiUrl';
 
 interface TeamMember { id: number; name: string; role: string; image: string; }
 interface ValueItem { title: string; desc: string; }
@@ -21,7 +22,7 @@ export default function About() {
   const [data, setData] = useState<AboutData | null>(null);
 
   useEffect(() => {
-    fetch('/api/about').then((r) => r.json()).then(setData).catch(() => {});
+    apiFetch('/api/about').then((r) => r.json()).then(setData).catch(() => {});
   }, []);
 
   if (!data) {
@@ -89,7 +90,7 @@ export default function About() {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute -bottom-8 -left-8 w-48 h-48 bg-[#c9a962]/10 -z-10" />
+              <div className="absolute -bottom-4 -left-4 sm:-bottom-8 sm:-left-8 w-32 h-32 sm:w-48 sm:h-48 bg-[#c9a962]/10 -z-10" />
             </motion.div>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { useStoreSettings } from '../lib/useStoreSettings';
 import { formatPrice } from '../lib/currency';
 import { cartHeaders } from '../lib/session';
 import { resolveProductPrice } from '../lib/pricing';
+import { apiFetch } from '../lib/apiUrl';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -28,10 +29,10 @@ export default function ProductDetail() {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/products?id=${id}`);
+        const res = await apiFetch(`/api/products?id=${id}`);
         const data = await res.json();
         setProduct(data);
-        const relatedRes = await fetch(`/api/products?category=${data.category}`);
+        const relatedRes = await apiFetch(`/api/products?category=${data.category}`);
         const relatedData = await relatedRes.json();
         setRelatedProducts(relatedData.filter((p: Product) => p.id !== data.id).slice(0, 4));
       } catch (err) {
@@ -47,9 +48,9 @@ export default function ProductDetail() {
     if (!product || adding) return;
     setAdding(true);
     try {
-      const res = await fetch('/api/cart', { method: 'POST', headers: cartHeaders(), body: JSON.stringify({ product_id: product.id, quantity }) });
+      const res = await apiFetch('/api/cart', { method: 'POST', headers: cartHeaders(), body: JSON.stringify({ product_id: product.id, quantity }) });
       if (res.ok) {
-        const cartRes = await fetch('/api/cart', { headers: cartHeaders() });
+        const cartRes = await apiFetch('/api/cart', { headers: cartHeaders() });
         const cartData = await cartRes.json();
         setCart(cartData);
         showNotification(`${product.name} added to bag`);
@@ -72,24 +73,50 @@ export default function ProductDetail() {
     }
   };
 
+  const handleShare = async () => {
+    if (!product) return;
+    const url = `${window.location.origin}/product/${product.id}`;
+    const shareData = {
+      title: product.name,
+      text: `${product.name} — रु ${displayPrice.toLocaleString('en-IN')}`,
+      url,
+    };
+
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      showNotification('Link copied to clipboard');
+    } catch {
+      showNotification('Could not share this product');
+    }
+  };
+
   if (loading) return <div className="min-h-screen pt-8"><div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-12"><div className="grid lg:grid-cols-2 gap-16"><div className="aspect-[4/5] bg-gray-100 animate-pulse" /><div className="space-y-6"><div className="h-8 bg-gray-100 animate-pulse w-3/4" /><div className="h-4 bg-gray-100 animate-pulse w-1/2" /></div></div></div></div>;
   if (!product) return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-400">Product not found</p></div>;
 
   return (
     <div className="min-h-screen pt-8 bg-white">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-12">
-        <nav className="flex items-center gap-2 text-xs text-gray-400 mb-8">
-          <Link to="/" className="hover:text-gray-900">Home</Link>
-          <ChevronRight className="w-3 h-3" />
-          <Link to="/collections" className="hover:text-gray-900">Shop</Link>
-          <ChevronRight className="w-3 h-3" />
-          <Link to={`/collections/${product.category}`} className="hover:text-gray-900 capitalize">{product.category}</Link>
-          <ChevronRight className="w-3 h-3" />
-          <span className="text-gray-900">{product.name}</span>
+        <nav className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400 mb-6 sm:mb-8">
+          <Link to="/" className="hover:text-gray-900 shrink-0">Home</Link>
+          <ChevronRight className="w-3 h-3 shrink-0" />
+          <Link to="/collections" className="hover:text-gray-900 shrink-0">Shop</Link>
+          <ChevronRight className="w-3 h-3 shrink-0" />
+          <Link to={`/collections/${product.category}`} className="hover:text-gray-900 capitalize shrink-0">{product.category}</Link>
+          <ChevronRight className="w-3 h-3 shrink-0" />
+          <span className="text-gray-900 line-clamp-1">{product.name}</span>
         </nav>
 
-        <div className="grid lg:grid-cols-2 gap-16">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="sticky top-28 h-fit">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="lg:sticky lg:top-28 h-fit">
             <div className="aspect-[4/5] bg-[#faf9f7] overflow-hidden">
               <motion.img initial={{ scale: 1.1, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
             </div>
@@ -114,19 +141,26 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            <div className="mt-10 flex gap-4">
+            <div className="mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleAddToCart} disabled={adding} className={`flex-1 py-4 text-xs font-medium tracking-[0.15em] uppercase transition-colors disabled:opacity-50 ${adding ? 'bg-gray-400 text-white' : 'bg-gray-900 text-white hover:bg-[#c9a962]'}`}>
                 {adding ? 'Adding...' : 'Add to Bag'}
               </motion.button>
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleWishlist} className={`w-14 border transition-colors ${liked ? 'border-[#c9a962] bg-[#c9a962]/10' : 'border-gray-200 hover:border-gray-400'}`}>
+              <div className="flex gap-3 sm:contents">
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleWishlist} className={`sm:w-14 h-14 border transition-colors ${liked ? 'border-[#c9a962] bg-[#c9a962]/10' : 'border-gray-200 hover:border-gray-400'}`}>
                 <Heart className={`w-5 h-5 mx-auto ${liked ? 'fill-[#c9a962] text-[#c9a962]' : 'text-gray-600'}`} />
               </motion.button>
-              <button className="w-14 border border-gray-200 hover:border-gray-400 transition-colors">
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Share product"
+                className="sm:w-14 h-14 border border-gray-200 hover:border-gray-400 transition-colors"
+              >
                 <Share2 className="w-5 h-5 mx-auto text-gray-600" />
               </button>
+              </div>
             </div>
 
-            <div className="mt-12 pt-8 border-t border-gray-100 grid grid-cols-3 gap-8">
+            <div className="mt-12 pt-8 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
               <div className="text-center"><p className="text-xs font-medium tracking-[0.1em] uppercase text-gray-900">Free Shipping</p><p className="text-xs text-gray-400 mt-1">On orders {formatPrice(storeSettings?.freeShippingThreshold ?? 5000)}+</p></div>
               <div className="text-center"><p className="text-xs font-medium tracking-[0.1em] uppercase text-gray-900">2 Year Warranty</p><p className="text-xs text-gray-400 mt-1">Quality assured</p></div>
               <div className="text-center"><p className="text-xs font-medium tracking-[0.1em] uppercase text-gray-900">Easy Returns</p><p className="text-xs text-gray-400 mt-1">30-day policy</p></div>

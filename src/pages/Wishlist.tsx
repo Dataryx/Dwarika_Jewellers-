@@ -5,6 +5,7 @@ import { useWishlist } from '../lib/WishlistContext';
 import { showNotification } from '../components/Notification';
 import { useStore } from '../lib/store';
 import { cartHeaders } from '../lib/session';
+import { apiFetch } from '../lib/apiUrl';
 
 export default function Wishlist() {
   const { items, removeItem, clearWishlist } = useWishlist();
@@ -12,14 +13,14 @@ export default function Wishlist() {
 
   const handleAddToCart = async (productId: number, productName: string) => {
     try {
-      const res = await fetch('/api/cart', {
+      const res = await apiFetch('/api/cart', {
         method: 'POST',
         headers: cartHeaders(),
         body: JSON.stringify({ product_id: productId, quantity: 1 }),
       });
       
       if (res.ok) {
-        const cartRes = await fetch('/api/cart', { headers: cartHeaders() });
+        const cartRes = await apiFetch('/api/cart', { headers: cartHeaders() });
         const cartData = await cartRes.json();
         setCart(cartData);
         showNotification(`${productName} added to bag`);

@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
+import { displayOrderId } from '../../../lib/orderId';
 
 interface Order {
   id: number;
+  order_uid?: string;
   customer_name: string;
   customer_email: string;
   status: string;
@@ -13,7 +15,7 @@ interface Order {
 }
 
 const statusStyles: Record<string, string> = {
-  pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  pending: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   confirmed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   processing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   shipped: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
@@ -52,7 +54,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
     >
       <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
         <h3 className="text-base font-semibold text-white">Recent Orders</h3>
-        <Link to="/admin/orders" className="flex items-center gap-1 text-sm text-amber-500 hover:text-amber-400 transition-colors">
+        <Link to="/orders" className="flex items-center gap-1 text-sm text-violet-500 hover:text-violet-400 transition-colors">
           View All
           <ArrowRight className="w-4 h-4" />
         </Link>
@@ -61,7 +63,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-700">
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Order</th>
+              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Order ID</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Customer</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Status</th>
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Total</th>
@@ -82,7 +84,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                   transition={{ delay: 0.5 + i * 0.05 }}
                   className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                 >
-                  <td className="px-6 py-4 text-sm font-medium text-white">#{order.id}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-white font-mono">{displayOrderId(order)}</td>
                   <td className="px-6 py-4">
                     <div>
                       <p className="text-sm font-medium text-white">{order.customer_name}</p>

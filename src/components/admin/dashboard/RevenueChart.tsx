@@ -22,7 +22,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-amber-500" />
+            <span className="w-3 h-3 rounded-full bg-violet-500" />
             <span className="text-xs text-gray-400">Revenue</span>
           </div>
           <div className="flex items-center gap-2">
@@ -35,8 +35,8 @@ export default function RevenueChart({ data }: RevenueChartProps) {
         <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -56,7 +56,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
             }}
             itemStyle={{ color: '#e5e7eb' }}
           />
-          <Area type="monotone" dataKey="revenue" stroke="#f59e0b" strokeWidth={2} fill="url(#revenueGradient)" />
+          <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#revenueGradient)" />
           <Area type="monotone" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} fill="url(#ordersGradient)" />
         </AreaChart>
       </ResponsiveContainer>

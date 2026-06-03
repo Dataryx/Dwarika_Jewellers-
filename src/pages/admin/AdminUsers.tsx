@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Users, Mail, ShoppingBag, Calendar, ArrowUpRight, Clock } from 'lucide-react';
+import { adminFetch } from '../../lib/adminApi';
 
 interface Customer {
   id: string;
@@ -18,6 +19,7 @@ type Status = 'active' | 'not_logged_in' | 'inactive';
 
 const THREE_MONTHS_MS = 90 * 24 * 60 * 60 * 1000;
 const ACTIVE_WINDOW_MS = 10 * 60 * 1000;
+const PAGE_SIZE = 10;
 
 function deriveStatus(lastLogin: string): Status {
   if (!lastLogin) return 'inactive';
@@ -29,7 +31,7 @@ function deriveStatus(lastLogin: string): Status {
 
 const statusConfig: Record<Status, { label: string; dot: string; text: string; bg: string }> = {
   active: { label: 'Active', dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-  not_logged_in: { label: 'Not Logged In', dot: 'bg-amber-400', text: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+  not_logged_in: { label: 'Not Logged In', dot: 'bg-violet-400', text: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
   inactive: { label: 'Inactive', dot: 'bg-gray-500', text: 'text-gray-400', bg: 'bg-gray-700/50 border-gray-600/30' },
 };
 
@@ -38,15 +40,20 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Status>('all');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchCustomers();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
+
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/customers');
+      const res = await adminFetch('/api/customers');
       const data: Customer[] = await res.json();
       const list = data.map((c) => ({
         ...c,
@@ -69,6 +76,12 @@ export default function AdminUsers() {
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, filtered.length);
 
   const totalCustomers = customers.length;
   const totalSpent = customers.reduce((sum, c) => sum + c.total_spent, 0);
@@ -123,8 +136,8 @@ export default function AdminUsers() {
         </div>
         <div className="bg-gray-800/60 border border-gray-700 rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5 text-amber-500" />
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+              <ShoppingBag className="w-5 h-5 text-violet-500" />
             </div>
             <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Revenue</span>
           </div>
@@ -141,7 +154,7 @@ export default function AdminUsers() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -151,7 +164,7 @@ export default function AdminUsers() {
               onClick={() => setStatusFilter(f)}
               className={`px-3 py-2 rounded-lg text-xs font-medium capitalize transition-colors border ${
                 statusFilter === f
-                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                  ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
                   : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
               }`}
             >
@@ -189,7 +202,7 @@ export default function AdminUsers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
-                {filtered.map((customer) => {
+                {paginated.map((customer) => {
                   const sc = statusConfig[customer.status];
                   return (
                     <tr key={customer.email} className="hover:bg-gray-700/20 transition-colors">
@@ -212,7 +225,7 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-400">{timeAgo(customer.last_login)}</td>
                       <td className="px-6 py-4 text-sm text-white text-right font-medium">{customer.order_count}</td>
-                      <td className="px-6 py-4 text-sm text-amber-500 text-right font-medium">रु {customer.total_spent.toLocaleString('en-IN')}</td>
+                      <td className="px-6 py-4 text-sm text-violet-500 text-right font-medium">रु {customer.total_spent.toLocaleString('en-IN')}</td>
                       <td className="px-6 py-4 text-sm text-gray-400">{formatDate(customer.created_at)}</td>
                     </tr>
                   );
@@ -220,6 +233,34 @@ export default function AdminUsers() {
               </tbody>
             </table>
           </div>
+          {filtered.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+              <p className="text-sm text-gray-500">
+                Showing {rangeStart}–{rangeEnd} of {filtered.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-500 px-2">
+                  Page {safePage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

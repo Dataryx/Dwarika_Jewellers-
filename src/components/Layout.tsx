@@ -5,8 +5,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeNewsletter } from '../lib/newsletter';
-import Cart from './Cart';
+import { fetchCartFromServer } from '../lib/cartSync';
 import SearchModal from './SearchModal';
+import Cart from './Cart';
 
 const navLinks = [
   { name: 'Shop', path: '/collections' },
@@ -14,6 +15,10 @@ const navLinks = [
   { name: 'Help', path: '/help' },
   { name: 'Contact', path: '/contact' },
 ];
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -24,10 +29,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [newsletterMessage, setNewsletterMessage] = useState('');
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const { toggleCart, cartCount } = useStore();
+  const { toggleCart, cartCount, setCart } = useStore();
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchCartFromServer().then(setCart).catch(() => {});
+  }, [setCart]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -48,6 +57,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setUserMenuOpen(false);
     setMobileMenuOpen(false);
+    scrollToTop();
   }, [location.pathname]);
 
   useEffect(() => {
@@ -93,18 +103,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent'
         }`}
       >
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center gap-3 group">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <Link to="/" onClick={scrollToTop} className="flex items-center gap-2 sm:gap-3 group min-w-0">
               <motion.div whileHover={{ rotate: 180, scale: 1.1 }} transition={{ duration: 0.6 }}>
-                <Gem className="w-7 h-7 text-[#c9a962]" />
+                <Gem className="w-6 h-6 sm:w-7 sm:h-7 text-[#c9a962]" />
               </motion.div>
-              <span className="text-xl font-serif font-medium tracking-[0.2em] text-gray-900">DWARIKA</span>
+              <span className="text-base sm:text-xl font-serif font-medium tracking-[0.12em] sm:tracking-[0.2em] text-gray-900 truncate">DWARIKA</span>
             </Link>
 
             <nav className="hidden lg:flex items-center gap-12">
               {navLinks.map((link) => (
-                <Link key={link.path} to={link.path} className="relative group">
+                <Link key={link.path} to={link.path} onClick={scrollToTop} className="relative group">
                   <span className={`text-xs font-medium tracking-[0.15em] uppercase transition-colors ${
                     location.pathname === link.path ? 'text-[#c9a962]' : 'text-gray-600 hover:text-gray-900'
                   }`}>{link.name}</span>
@@ -115,7 +125,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-2 sm:gap-5 shrink-0">
               <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchOpen(true)} className="p-2 text-gray-600 hover:text-gray-900">
                 <Search className="w-5 h-5" />
               </motion.button>
@@ -165,7 +175,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="lg:hidden bg-white border-t border-gray-100">
               <nav className="px-6 py-8 space-y-4">
                 {navLinks.map((link) => (
-                  <Link key={link.path} to={link.path} onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium tracking-[0.1em] uppercase text-gray-600">{link.name}</Link>
+                  <Link key={link.path} to={link.path} onClick={() => { scrollToTop(); setMobileMenuOpen(false); }} className="block text-sm font-medium tracking-[0.1em] uppercase text-gray-600">{link.name}</Link>
                 ))}
                 <div className="pt-4 border-t border-gray-100 space-y-4">
                   {user ? (
@@ -186,7 +196,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </motion.header>
 
-      <main className="pt-20">
+      <main className="pt-16 sm:pt-20">
         <AnimatePresence mode="wait">
           <motion.div key={location.pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
             {children}
@@ -194,10 +204,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </main>
 
-      <footer className="bg-[#faf9f7] mt-24">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-20">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16">
-            <div>
+      <footer className="bg-[#faf9f7] mt-12 sm:mt-24">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-12 sm:py-20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 sm:gap-12 lg:gap-8">
+            <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3 mb-6">
                 <Gem className="w-6 h-6 text-[#c9a962]" />
                 <span className="text-lg font-serif font-medium tracking-[0.2em] text-gray-900">DWARIKA</span>
@@ -234,7 +244,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div>
               <h4 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-6">Newsletter</h4>
               <p className="text-sm text-gray-500 mb-4">Subscribe for exclusive access.</p>
-              <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
+              <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="email"
                   placeholder="Email"

@@ -5,7 +5,7 @@ import { Search, Plus, Filter, MoreHorizontal, Package, Edit, Trash2, Eye } from
 const products = [
   { id: 1, name: 'Wireless Headphones Pro', category: 'Electronics', price: 149.99, stock: 45, status: 'active', sales: 284, image: 'bg-blue-500/20' },
   { id: 2, name: 'Smart Watch Series 5', category: 'Electronics', price: 199.99, stock: 32, status: 'active', sales: 196, image: 'bg-purple-500/20' },
-  { id: 3, name: 'Leather Messenger Bag', category: 'Fashion', price: 149.99, stock: 3, status: 'low', sales: 152, image: 'bg-amber-500/20' },
+  { id: 3, name: 'Leather Messenger Bag', category: 'Fashion', price: 149.99, stock: 3, status: 'low', sales: 152, image: 'bg-violet-500/20' },
   { id: 4, name: 'Ceramic Coffee Set', category: 'Home', price: 99.99, stock: 28, status: 'active', sales: 128, image: 'bg-emerald-500/20' },
   { id: 5, name: 'Running Shoes Elite', category: 'Sports', price: 149.99, stock: 0, status: 'out', sales: 98, image: 'bg-pink-500/20' },
   { id: 6, name: 'Minimalist Desk Lamp', category: 'Home', price: 79.99, stock: 56, status: 'active', sales: 87, image: 'bg-teal-500/20' },
@@ -15,7 +15,7 @@ const products = [
 
 const statusStyles: Record<string, string> = {
   active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  low: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  low: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
   out: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 

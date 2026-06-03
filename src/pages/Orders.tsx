@@ -3,6 +3,8 @@ import { Package, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { apiFetch } from '../lib/apiUrl';
+import { displayOrderId } from '../lib/orderId';
 
 interface OrderItem {
   id: number;
@@ -18,6 +20,7 @@ interface OrderItem {
 
 interface Order {
   id: number;
+  order_uid?: string;
   customer_name: string;
   customer_email: string;
   total: number;
@@ -35,7 +38,7 @@ export default function Orders() {
     const fetchOrders = async () => {
       if (!user?.email) { setLoading(false); return; }
       try {
-        const res = await fetch(`/api/orders?email=${encodeURIComponent(user.email)}`);
+        const res = await apiFetch(`/api/orders?email=${encodeURIComponent(user.email)}`);
         const data = await res.json();
         setOrders(data);
       } catch (err) {
@@ -124,7 +127,7 @@ export default function Orders() {
                         {getStatusIcon(order.status)}
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            Order #{order.id}
+                            {displayOrderId(order)}
                           </p>
                           <p className="text-xs text-gray-500">
                             {new Date(order.created_at).toLocaleDateString('en-US', {

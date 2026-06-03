@@ -8,6 +8,7 @@ import { useWishlist } from '../lib/WishlistContext';
 import { cartHeaders } from '../lib/session';
 import { useStoreSettings } from '../lib/useStoreSettings';
 import { resolveProductPrice } from '../lib/pricing';
+import { apiFetch } from '../lib/apiUrl';
 
 interface ProductCardProps {
   product: Product;
@@ -30,14 +31,14 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
     setAdding(true);
 
     try {
-      const res = await fetch('/api/cart', {
+      const res = await apiFetch('/api/cart', {
         method: 'POST',
         headers: cartHeaders(),
         body: JSON.stringify({ product_id: product.id, quantity: 1 }),
       });
       
       if (res.ok) {
-        const cartRes = await fetch('/api/cart', { headers: cartHeaders() });
+        const cartRes = await apiFetch('/api/cart', { headers: cartHeaders() });
         const cartData = await cartRes.json();
         setCart(cartData);
         showNotification(`${product.name} added to bag`);
@@ -74,13 +75,13 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="relative aspect-[4/5] overflow-hidden bg-[#faf9f7]">
           <motion.img src={product.image_url} alt={product.name} className="w-full h-full object-cover" animate={{ scale: isHovered ? 1.05 : 1 }} transition={{ duration: 0.7 }} />
           
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }} className="absolute bottom-4 left-4 right-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }} className="absolute bottom-4 left-4 right-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
             <button onClick={handleAddToCart} disabled={adding} className="w-full py-3 bg-white/95 backdrop-blur-sm text-gray-900 text-xs font-medium tracking-[0.1em] uppercase hover:bg-[#c9a962] hover:text-white transition-colors disabled:opacity-50">
               {adding ? 'Adding...' : 'Add to Bag'}
             </button>
           </motion.div>
 
-          <motion.button initial={{ opacity: 0 }} animate={{ opacity: isHovered ? 1 : 0 }} whileTap={{ scale: 0.8 }} onClick={handleWishlist} className="absolute top-4 right-4 w-9 h-9 bg-white/95 backdrop-blur-sm flex items-center justify-center">
+          <motion.button initial={{ opacity: 0 }} animate={{ opacity: isHovered ? 1 : 0 }} whileTap={{ scale: 0.8 }} onClick={handleWishlist} className="absolute top-4 right-4 w-9 h-9 bg-white/95 backdrop-blur-sm flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
             <Heart className={`w-4 h-4 transition-colors ${liked ? 'fill-[#c9a962] text-[#c9a962]' : 'text-gray-600'}`} />
           </motion.button>
         </div>

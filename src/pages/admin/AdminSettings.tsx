@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Truck, CreditCard, Bell, Shield, Save, Check, Loader2, Gem } from 'lucide-react';
 import { invalidateSettingsCache } from '../../lib/useStoreSettings';
+import { AdminPage, settingsFormGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
+import { adminFetch } from '../../lib/adminApi';
+import { useAdminAuth } from '../../lib/adminAuth';
 
 const tabs = [
   { id: 'pricing', label: 'Pricing', icon: Gem },
@@ -17,6 +20,7 @@ interface StoreSettings {
   taxRate: number;
   baseGoldRatePerGram: number;
   goldRatePerGram: number;
+  silverRatePerGram: number;
   diamondRatePerCarat: number;
   goldMakingChargeRate: number;
   gramsPerTola: number;
@@ -32,6 +36,7 @@ const DEFAULTS: StoreSettings = {
   taxRate: 13,
   baseGoldRatePerGram: 16358,
   goldRatePerGram: 16358,
+  silverRatePerGram: 434,
   diamondRatePerCarat: 28000,
   goldMakingChargeRate: 0.4,
   gramsPerTola: 11.664,
@@ -57,6 +62,7 @@ const DEFAULTS: StoreSettings = {
 };
 
 export default function AdminSettings() {
+  const sidebarOpen = useAdminSidebarOpen();
   const [activeTab, setActiveTab] = useState<TabId>('pricing');
   const [settings, setSettings] = useState<StoreSettings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -65,7 +71,7 @@ export default function AdminSettings() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/settings')
+    adminFetch('/api/settings')
       .then((r) => r.json())
       .then((data) => {
         const merged = { ...DEFAULTS, ...data };
@@ -85,7 +91,7 @@ export default function AdminSettings() {
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/settings', {
+      const res = await adminFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
@@ -103,14 +109,16 @@ export default function AdminSettings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
-        <Loader2 className="w-5 h-5 animate-spin" /> Loading settings…
-      </div>
+      <AdminPage>
+        <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" /> Loading settings…
+        </div>
+      </AdminPage>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <AdminPage>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h3 className="text-xl font-semibold text-white">Settings</h3>
         <p className="text-sm text-gray-500 mt-1">Manage shipping, payments, and notifications</p>
@@ -142,7 +150,7 @@ export default function AdminSettings() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex gap-2 overflow-x-auto pb-1"
+        className="flex flex-wrap gap-2 pb-1"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -152,7 +160,7 @@ export default function AdminSettings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border ${
                 activeTab === tab.id
-                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                  ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
                   : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
               }`}
             >
@@ -171,18 +179,18 @@ export default function AdminSettings() {
         transition={{ duration: 0.3 }}
         className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-6"
       >
-        {activeTab === 'pricing' && <PricingSettings settings={settings} update={update} />}
-        {activeTab === 'shipping' && <ShippingSettings settings={settings} update={update} />}
+        {activeTab === 'pricing' && <PricingSettings settings={settings} update={update} sidebarOpen={sidebarOpen} />}
+        {activeTab === 'shipping' && <ShippingSettings settings={settings} update={update} sidebarOpen={sidebarOpen} />}
         {activeTab === 'payments' && <PaymentSettings settings={settings} update={update} />}
         {activeTab === 'notifications' && <NotificationSettings settings={settings} update={update} />}
-        {activeTab === 'security' && <SecuritySettings />}
+        {activeTab === 'security' && <SecuritySettings sidebarOpen={sidebarOpen} />}
 
         {activeTab !== 'security' && (
           <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
             >
               {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
@@ -190,30 +198,32 @@ export default function AdminSettings() {
           </div>
         )}
       </motion.div>
-    </div>
+    </AdminPage>
   );
 }
 
 const inputClass =
-  'w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all';
+  'w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
 const labelClass = 'text-sm font-medium text-white mb-2 block';
 
 type SettingsProps = {
   settings: StoreSettings;
   update: <K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) => void;
+  sidebarOpen?: boolean;
 };
 
-function PricingSettings({ settings, update }: SettingsProps) {
+function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps) {
   const [pricingTab, setPricingTab] = useState<'gold' | 'diamond'>('gold');
+  const gridClass = settingsFormGridClass(sidebarOpen);
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 pb-1">
         <button
           onClick={() => setPricingTab('gold')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
             pricingTab === 'gold'
-              ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+              ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
               : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
           }`}
         >
@@ -223,7 +233,7 @@ function PricingSettings({ settings, update }: SettingsProps) {
           onClick={() => setPricingTab('diamond')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
             pricingTab === 'diamond'
-              ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+              ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
               : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
           }`}
         >
@@ -232,9 +242,9 @@ function PricingSettings({ settings, update }: SettingsProps) {
       </div>
 
       {pricingTab === 'gold' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className={gridClass}>
           <div>
-            <label className={labelClass}>Master Gold Rate (रु / gram)</label>
+            <label className={labelClass}>Master Gold Rate — 24k fine (रु / gram)</label>
             <input
               type="number"
               step="0.01"
@@ -242,6 +252,22 @@ function PricingSettings({ settings, update }: SettingsProps) {
               onChange={(e) => update('goldRatePerGram', Number(e.target.value))}
               className={inputClass}
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Per tola: रु {Math.round(settings.goldRatePerGram * settings.gramsPerTola).toLocaleString('en-IN')} — homepage ticker & product pricing
+            </p>
+          </div>
+          <div>
+            <label className={labelClass}>Master Silver Rate (रु / gram)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={settings.silverRatePerGram}
+              onChange={(e) => update('silverRatePerGram', Number(e.target.value))}
+              className={inputClass}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Per tola: रु {Math.round(settings.silverRatePerGram * settings.gramsPerTola).toLocaleString('en-IN')}
+            </p>
           </div>
           <div>
             <label className={labelClass}>Grams Per Tola</label>
@@ -267,7 +293,7 @@ function PricingSettings({ settings, update }: SettingsProps) {
       )}
 
       {pricingTab === 'diamond' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className={gridClass}>
           <div>
             <label className={labelClass}>Master Diamond Rate (रु / carat)</label>
             <input
@@ -285,10 +311,12 @@ function PricingSettings({ settings, update }: SettingsProps) {
   );
 }
 
-function ShippingSettings({ settings, update }: SettingsProps) {
+function ShippingSettings({ settings, update, sidebarOpen = true }: SettingsProps) {
+  const gridClass = settingsFormGridClass(sidebarOpen);
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className={gridClass}>
         <div>
           <label className={labelClass}>Free Shipping Threshold (रु)</label>
           <input
@@ -310,7 +338,7 @@ function ShippingSettings({ settings, update }: SettingsProps) {
           />
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className={gridClass}>
         <div>
           <label className={labelClass}>Express Shipping Rate (रु)</label>
           <input
@@ -331,7 +359,7 @@ function ShippingSettings({ settings, update }: SettingsProps) {
           />
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className={gridClass}>
         <div>
           <label className={labelClass}>Tax Rate (%)</label>
           <input
@@ -381,7 +409,10 @@ function PaymentSettings({ settings, update }: SettingsProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">Toggle payment methods on or off. Only enabled methods appear on the checkout page.</p>
+      <p className="text-xs text-gray-500">
+        Toggle payment methods on or off. Only enabled methods appear on checkout. Currently only{' '}
+        <span className="text-gray-300">Cash on Delivery</span> can complete an order — other methods are shown as coming soon.
+      </p>
 
       {/* Add new method */}
       <div className="flex gap-2">
@@ -397,7 +428,7 @@ function PaymentSettings({ settings, update }: SettingsProps) {
           type="button"
           onClick={addMethod}
           disabled={!newMethod.trim()}
-          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-lg text-sm transition-colors disabled:opacity-40 shrink-0"
+          className="px-4 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-40 shrink-0"
         >
           + Add
         </button>
@@ -425,7 +456,7 @@ function PaymentSettings({ settings, update }: SettingsProps) {
             <button
               type="button"
               onClick={() => toggle(method)}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${enabled ? 'bg-amber-500' : 'bg-gray-700'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${enabled ? 'bg-violet-500' : 'bg-gray-700'}`}
             >
               <span
                 className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'left-6' : 'left-1'}`}
@@ -479,7 +510,7 @@ function NotificationSettings({ settings, update }: SettingsProps) {
           <button
             type="button"
             onClick={() => toggle(key)}
-            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${value ? 'bg-amber-500' : 'bg-gray-700'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${value ? 'bg-violet-500' : 'bg-gray-700'}`}
           >
             <span
               className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${value ? 'left-6' : 'left-1'}`}
@@ -491,7 +522,9 @@ function NotificationSettings({ settings, update }: SettingsProps) {
   );
 }
 
-function SecuritySettings() {
+function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
+  const { email } = useAdminAuth();
+  const gridClass = settingsFormGridClass(sidebarOpen);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -514,8 +547,8 @@ function SecuritySettings() {
     }
     setSaving(true);
     try {
-      const email = localStorage.getItem('adminEmail');
-      const res = await fetch('/api/admin-auth', {
+      if (!email) throw new Error('Not signed in');
+      const res = await adminFetch('/api/admin-auth', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, currentPassword: currentPw, newPassword: newPw }),
@@ -546,7 +579,7 @@ function SecuritySettings() {
           {msg.text}
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className={gridClass}>
         <div>
           <label className={labelClass}>Current Password</label>
           <input
@@ -557,8 +590,6 @@ function SecuritySettings() {
             className={`${inputClass} placeholder-gray-500`}
           />
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className={labelClass}>New Password</label>
           <input
@@ -584,7 +615,7 @@ function SecuritySettings() {
         <button
           onClick={handlePasswordChange}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
         >
           <Shield className="w-4 h-4" />
           {saving ? 'Updating...' : 'Update Password'}

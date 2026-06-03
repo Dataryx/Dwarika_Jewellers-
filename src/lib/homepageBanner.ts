@@ -1,3 +1,5 @@
+import { apiFetch } from './apiUrl';
+
 export type HomeBannerConfig = {
   imageUrl: string;
   kicker: string;
@@ -5,8 +7,6 @@ export type HomeBannerConfig = {
   titleHighlight: string;
   subtitle: string;
 };
-
-const STORAGE_KEY = 'dwarika_homepage_banner_v2';
 
 export const BANNER_UPDATED_EVENT = 'dwarika:homepage-banner-updated';
 
@@ -19,58 +19,39 @@ export const DEFAULT_HOME_BANNER: HomeBannerConfig = {
     'Discover handcrafted jewelry that tells your story. Each piece is a masterpiece of artistry and passion.',
 };
 
-function mergeWithDefaults(partial: Partial<HomeBannerConfig>): HomeBannerConfig {
+function mergeWithDefaults(partial: Partial<HomeBannerConfig> | null): HomeBannerConfig {
+  if (!partial) return { ...DEFAULT_HOME_BANNER };
   return { ...DEFAULT_HOME_BANNER, ...partial };
 }
 
+/** @deprecated Use fetchHomepageBanner — banner is stored in MongoDB only. */
 export function getHomepageBanner(): HomeBannerConfig {
+  return { ...DEFAULT_HOME_BANNER };
+}
+
+export async function fetchHomepageBanner(): Promise<HomeBannerConfig> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_HOME_BANNER };
-    const parsed = JSON.parse(raw) as Partial<HomeBannerConfig>;
-    return mergeWithDefaults(parsed);
+    const res = await apiFetch('/api/banner');
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    return mergeWithDefaults(data);
   } catch {
     return { ...DEFAULT_HOME_BANNER };
   }
 }
 
-export async function fetchHomepageBanner(): Promise<HomeBannerConfig> {
-  try {
-    const res = await fetch('/api/banner');
-    if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-    if (!data) return { ...DEFAULT_HOME_BANNER };
-    return mergeWithDefaults(data);
-  } catch {
-    return getHomepageBanner();
-  }
-}
-
 export async function saveHomepageBannerToApi(config: HomeBannerConfig): Promise<void> {
-  const res = await fetch('/api/banner', {
+  const res = await apiFetch('/api/banner', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
   });
   if (!res.ok) throw new Error('Failed to save banner to server');
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    /* localStorage may exceed quota — API save succeeded so ignore */
-  }
   window.dispatchEvent(new CustomEvent(BANNER_UPDATED_EVENT));
 }
 
 export function subscribeHomepageBanner(cb: () => void): () => void {
   const onCustom = () => cb();
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) cb();
-  };
   window.addEventListener(BANNER_UPDATED_EVENT, onCustom);
-  window.addEventListener('storage', onStorage);
-  return () => {
-    window.removeEventListener(BANNER_UPDATED_EVENT, onCustom);
-    window.removeEventListener('storage', onStorage);
-  };
+  return () => window.removeEventListener(BANNER_UPDATED_EVENT, onCustom);
 }

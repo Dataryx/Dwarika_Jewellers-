@@ -63,9 +63,9 @@ export default function Account() {
             </motion.div>
           )}
 
-          <div className="bg-white p-8 rounded-lg shadow-sm">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
+          <div className="bg-white p-5 sm:p-8 rounded-lg shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+              <div className="flex items-center gap-4 min-w-0">
                 <div className="w-16 h-16 bg-[#c9a962]/20 rounded-full flex items-center justify-center">
                   <User className="w-8 h-8 text-[#c9a962]" />
                 </div>

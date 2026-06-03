@@ -3,11 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import {
   LayoutDashboard, LayoutTemplate, Package, ShoppingCart, Users, Settings, LogOut,
-  Menu, X, Search, Bell, ExternalLink, Hexagon,
-  Clock, AlertTriangle, Grid3X3, BookOpen, FileText, MessageSquare, Download,
+  Menu, X, Search, Bell, ExternalLink, Hexagon, User,
+  Clock, AlertTriangle, Grid3X3, FileText, MessageSquare, Download, Shield, Mail,
 } from 'lucide-react';
+import { adminFetch } from '../../lib/adminApi';
+import { displayOrderId } from '../../lib/orderId';
 import { Link, NavLink, useLocation, useNavigate, Outlet, useOutletContext } from 'react-router-dom';
 import { useAdminAuth } from '../../lib/adminAuth';
+import { storefrontUrl } from '../../lib/storefrontUrl';
 import Notification from '../../components/Notification';
 
 import StatCard from '../../components/admin/dashboard/StatCard';
@@ -19,6 +22,7 @@ import RecentOrders from '../../components/admin/dashboard/RecentOrders';
 import ActivityFeed from '../../components/admin/dashboard/ActivityFeed';
 
 export type AdminOutletContext = {
+  sidebarOpen: boolean;
   stats: {
     totalProducts: number;
     totalOrders: number;
@@ -36,15 +40,17 @@ export type AdminOutletContext = {
 };
 
 const menuItems = [
-  { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-  { name: 'Home Banner', path: '/admin/home-banner', icon: LayoutTemplate },
-  { name: 'Categories', path: '/admin/categories', icon: Grid3X3 },
-  { name: 'About Page', path: '/admin/about', icon: FileText },
-  { name: 'Contact Page', path: '/admin/contact', icon: MessageSquare },
-  { name: 'Products', path: '/admin/products', icon: Package },
-  { name: 'Orders', path: '/admin/orders', icon: ShoppingCart },
-  { name: 'Customers', path: '/admin/users', icon: Users },
-  { name: 'Settings', path: '/admin/settings', icon: Settings },
+  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { name: 'Home Banner', path: '/home-banner', icon: LayoutTemplate },
+  { name: 'Categories', path: '/categories', icon: Grid3X3 },
+  { name: 'About Page', path: '/about', icon: FileText },
+  { name: 'Contact Page', path: '/contact', icon: MessageSquare },
+  { name: 'Products', path: '/products', icon: Package },
+  { name: 'Orders', path: '/orders', icon: ShoppingCart },
+  { name: 'Customers', path: '/users', icon: Users },
+  { name: 'Admin Users', path: '/admin-users', icon: Shield },
+  { name: 'SMTP', path: '/smtp', icon: Mail },
+  { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
 function computeMonthOverMonth(orders: any[], products: any[]) {
@@ -95,18 +101,23 @@ function computeMonthOverMonth(orders: any[], products: any[]) {
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
   const [showNotifications, setShowNotifications] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [topSearch, setTopSearch] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [adminToastMessage, setAdminToastMessage] = useState('');
   const [showAdminToast, setShowAdminToast] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const hasOrderSnapshotRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, email } = useAdminAuth();
+  const { logout, email, name, role, isMaster, refreshAdminProfile } = useAdminAuth();
 
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -118,21 +129,42 @@ export default function AdminLayout() {
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [storeName, setStoreName] = useState('Dwarika');
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    newOrders: true,
+    lowStock: true,
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches);
+      if (e.matches) setMobileMenuOpen(false);
+    };
+    setIsDesktop(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
         const [productsRes, ordersRes, settingsRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/orders'),
-          fetch('/api/settings'),
+          adminFetch('/api/products'),
+          adminFetch('/api/orders'),
+          adminFetch('/api/settings'),
         ]);
         const prods = await productsRes.json();
         const ords = await ordersRes.json();
         const settings = await settingsRes.json();
 
         const nextOrderIds = new Set<string>(ords.map((o: any) => String(o.id)));
-        if (hasOrderSnapshotRef.current) {
+        const prefs = {
+          newOrders: settings?.notifications?.newOrders !== false,
+          lowStock: settings?.notifications?.lowStock !== false,
+        };
+        setNotificationPrefs(prefs);
+
+        if (prefs.newOrders && hasOrderSnapshotRef.current) {
           const freshOrders = ords.filter((o: any) => !knownOrderIdsRef.current.has(String(o.id)));
           if (freshOrders.length > 0) {
             const latest = freshOrders
@@ -140,7 +172,7 @@ export default function AdminLayout() {
               .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
             setAdminToastMessage(
               freshOrders.length === 1
-                ? `New order #${latest.id} placed by ${latest.customer_name}`
+                ? `New order ${displayOrderId(latest)} placed by ${latest.customer_name}`
                 : `${freshOrders.length} new orders have been placed`
             );
             setShowAdminToast(true);
@@ -173,28 +205,36 @@ export default function AdminLayout() {
     const handler = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifications(false);
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSearchResults(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) setProfileMenuOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
+    setProfileMenuOpen(false);
+    setShowNotifications(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
   const isActive = (path: string) =>
-    path === '/admin'
-      ? location.pathname === '/admin'
+    path === '/'
+      ? location.pathname === '/'
       : location.pathname === path || location.pathname.startsWith(path + '/');
 
-  const currentPageName =
-    menuItems.find((item) => isActive(item.path))?.name || 'Dashboard';
+  const currentPageName = menuItems.find((item) => isActive(item.path))?.name || 'Dashboard';
+
+  const showSidebar = isDesktop ? sidebarOpen : mobileMenuOpen;
+  const layoutSidebarOpen = isDesktop && sidebarOpen;
 
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
       {/* Sidebar */}
       <AnimatePresence>
-        {(sidebarOpen || mobileMenuOpen) && (
+        {showSidebar && (
           <motion.aside
             initial={{ x: -280 }}
             animate={{ x: 0 }}
@@ -203,14 +243,22 @@ export default function AdminLayout() {
             className="fixed lg:relative z-50 w-64 h-screen bg-gray-900 border-r border-gray-800 flex flex-col shrink-0"
           >
             {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-gray-800">
-              <Link to="/admin" className="flex items-center gap-3 group">
+            <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
+              <Link to="/" className="flex items-center gap-3 group min-w-0" onClick={() => setMobileMenuOpen(false)}>
                 <img src="/favicon.svg?v=2" alt="Dwarika logo" className="w-9 h-9 shrink-0" />
-                <div>
-                  <h1 className="text-lg font-bold text-white leading-tight">{storeName}</h1>
+                <div className="min-w-0">
+                  <h1 className="text-lg font-bold text-white leading-tight truncate">{storeName}</h1>
                   <p className="text-xs text-gray-500">Admin Panel</p>
                 </div>
               </Link>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors shrink-0"
+                aria-label="Close menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Navigation */}
@@ -222,7 +270,7 @@ export default function AdminLayout() {
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    end={item.path === '/admin'}
+                    end={item.path === '/'}
                     onClick={() => setMobileMenuOpen(false)}
                     className="relative flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 group"
                   >
@@ -233,13 +281,13 @@ export default function AdminLayout() {
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                       />
                     )}
-                    <span className={`relative z-10 flex items-center w-full ${active ? 'text-amber-500' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                    <span className={`relative z-10 flex items-center w-full ${active ? 'text-violet-500' : 'text-gray-400 group-hover:text-gray-200'}`}>
                       <Icon className="w-5 h-5 mr-3" />
                       {item.name}
                       {active && (
                         <motion.span
                           layoutId="activeChevron"
-                          className="ml-auto text-amber-500 text-xs"
+                          className="ml-auto text-violet-500 text-xs"
                           transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                         >
                           ›
@@ -250,26 +298,6 @@ export default function AdminLayout() {
                 );
               })}
             </nav>
-
-            {/* User */}
-            <div className="px-3 py-4 border-t border-gray-800">
-              <div className="flex items-center px-3 py-3 rounded-xl bg-gray-800/50">
-                <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-gray-400" />
-                </div>
-                <div className="ml-3 flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">Admin</p>
-                  <p className="text-xs text-gray-500 truncate">{email}</p>
-                </div>
-              </div>
-              <button
-                onClick={logout}
-                className="flex items-center w-full px-3 py-2.5 mt-2 text-sm text-gray-500 hover:text-red-400 transition-colors rounded-xl hover:bg-gray-800/50"
-              >
-                <LogOut className="w-4 h-4 mr-3" />
-                Logout
-              </button>
-            </div>
           </motion.aside>
         )}
       </AnimatePresence>
@@ -280,26 +308,24 @@ export default function AdminLayout() {
         <header className="h-16 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 flex items-center justify-between px-4 lg:px-6 shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => {
-                if (window.innerWidth < 1024) {
-                  setMobileMenuOpen(!mobileMenuOpen);
+                if (isDesktop) {
+                  setSidebarOpen((open) => !open);
                 } else {
-                  setSidebarOpen(!sidebarOpen);
+                  setMobileMenuOpen((open) => !open);
                 }
               }}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+              aria-label={showSidebar ? 'Close menu' : 'Open menu'}
             >
-              {mobileMenuOpen || (!sidebarOpen && window.innerWidth >= 1024) ? (
-                <Menu className="w-4 h-4" />
-              ) : (
-                <X className="w-4 h-4" />
-              )}
+              {showSidebar ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
-            <h2 className="text-lg font-semibold text-white hidden sm:block">{currentPageName}</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-white truncate max-w-[7rem] sm:max-w-none">{currentPageName}</h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Search */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Search — desktop */}
             <div className="relative hidden md:block" ref={searchRef}>
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
@@ -311,17 +337,18 @@ export default function AdminLayout() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && topSearch.trim()) {
                     const q = topSearch.trim().toLowerCase();
-                    if (/^\d+$/.test(q)) navigate('/admin/orders');
-                    else if (['order','orders'].includes(q)) navigate('/admin/orders');
-                    else if (['user','users','customer','customers'].includes(q)) navigate('/admin/users');
-                    else if (['setting','settings'].includes(q)) navigate('/admin/settings');
-                    else if (['banner','hero','home'].includes(q)) navigate('/admin/home-banner');
-                    else navigate('/admin/products');
+                    if (/^\d+$/.test(q)) navigate('/orders');
+                    else if (['order','orders'].includes(q)) navigate('/orders');
+                    else if (['user','users','customer','customers'].includes(q)) navigate('/users');
+                    else if (['setting','settings'].includes(q)) navigate('/settings');
+                    else if (['admin','admins','admin-users'].includes(q)) navigate('/admin-users');
+                    else if (['banner','hero','home'].includes(q)) navigate('/home-banner');
+                    else navigate('/products');
                     setShowSearchResults(false);
                     setTopSearch('');
                   }
                 }}
-                className="w-64 bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                className="w-64 bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
               />
               {showSearchResults && topSearch.trim() && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
@@ -331,7 +358,7 @@ export default function AdminLayout() {
                     .map((p: any) => (
                       <button
                         key={p.id}
-                        onClick={() => { navigate(`/admin/products/${p.id}`); setShowSearchResults(false); setTopSearch(''); }}
+                        onClick={() => { navigate(`/products/edit/${p.id}`); setShowSearchResults(false); setTopSearch(''); }}
                         className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
                       >
                         <Package className="w-3.5 h-3.5 text-gray-500" />
@@ -344,11 +371,11 @@ export default function AdminLayout() {
                     .map((o: any) => (
                       <button
                         key={o.id}
-                        onClick={() => { navigate('/admin/orders'); setShowSearchResults(false); setTopSearch(''); }}
+                        onClick={() => { navigate('/orders'); setShowSearchResults(false); setTopSearch(''); }}
                         className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
                       >
                         <ShoppingCart className="w-3.5 h-3.5 text-gray-500" />
-                        Order #{o.id} — {o.customer_name}
+                        Order {displayOrderId(o)} — {o.customer_name}
                       </button>
                     ))}
                   {products.filter((p: any) => p.name?.toLowerCase().includes(topSearch.toLowerCase())).length === 0 &&
@@ -359,6 +386,15 @@ export default function AdminLayout() {
               )}
             </div>
 
+            <button
+              type="button"
+              onClick={() => navigate('/products')}
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+              aria-label="Search products"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
               <button
@@ -366,34 +402,36 @@ export default function AdminLayout() {
                 className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
               >
                 <Bell className="w-4 h-4" />
-                {(orders.filter((o: any) => o.status === 'pending').length > 0 ||
-                  products.filter((p: any) => Number(p.stock) <= 5).length > 0) && (
+                {(notificationPrefs.newOrders && orders.filter((o: any) => o.status === 'pending').length > 0) ||
+                  (notificationPrefs.lowStock && products.filter((p: any) => Number(p.stock) <= 5).length > 0) ? (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-                )}
+                ) : null}
               </button>
               {showNotifications && (
                 <div className="absolute right-0 top-full mt-1 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
                   <div className="px-4 py-3 border-b border-gray-700">
                     <p className="text-sm font-medium text-white">Notifications</p>
                   </div>
-                  {orders.filter((o: any) => o.status === 'pending').length === 0 &&
-                   products.filter((p: any) => Number(p.stock) <= 5).length === 0 ? (
+                  {(!notificationPrefs.newOrders || orders.filter((o: any) => o.status === 'pending').length === 0) &&
+                   (!notificationPrefs.lowStock || products.filter((p: any) => Number(p.stock) <= 5).length === 0) ? (
                     <div className="px-4 py-6 text-center text-sm text-gray-500">All caught up!</div>
                   ) : (
                     <div className="py-1">
-                      {products
+                      {notificationPrefs.lowStock &&
+                        products
                         .filter((p: any) => Number(p.stock) <= 5)
                         .slice(0, 5)
                         .map((p: any) => (
                           <div key={`stock-${p.id}`} className="px-4 py-3 hover:bg-gray-700/30 flex items-start gap-3">
-                            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
                             <div>
                               <p className="text-sm text-white">{Number(p.stock) === 0 ? 'Out of stock' : 'Low stock'}</p>
                               <p className="text-xs text-gray-500">{p.name} — {p.stock} left</p>
                             </div>
                           </div>
                         ))}
-                      {orders
+                      {notificationPrefs.newOrders &&
+                        orders
                         .filter((o: any) => o.status === 'pending')
                         .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                         .slice(0, 5)
@@ -401,7 +439,7 @@ export default function AdminLayout() {
                           <div key={`order-${o.id}`} className="px-4 py-3 hover:bg-gray-700/30 flex items-start gap-3">
                             <ShoppingCart className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm text-white">New order #{o.id}</p>
+                              <p className="text-sm text-white">New order {displayOrderId(o)}</p>
                               <p className="text-xs text-gray-500">{o.customer_name} — रु {Number(o.total).toLocaleString('en-IN')}</p>
                             </div>
                           </div>
@@ -412,24 +450,111 @@ export default function AdminLayout() {
               )}
             </div>
 
-            <Link
-              to="/"
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg transition-colors border border-gray-700"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span className="hidden sm:inline">View Store</span>
-            </Link>
+            {/* Profile menu — same pattern as storefront user panel */}
+            <div className="relative" ref={profileMenuRef}>
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setProfileMenuOpen((open) => {
+                    if (!open) void refreshAdminProfile();
+                    return !open;
+                  });
+                }}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors ${
+                  profileMenuOpen ? 'text-violet-400' : 'text-gray-400 hover:text-violet-400'
+                }`}
+                aria-label="Admin profile menu"
+                aria-expanded={profileMenuOpen}
+              >
+                <User className="w-4 h-4" />
+              </motion.button>
+
+              <AnimatePresence>
+                {profileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 8 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 py-2 overflow-hidden"
+                  >
+                    <div className="px-4 py-3 border-b border-gray-700">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Signed in as</p>
+                      <p className="text-sm font-semibold text-white truncate">{name}</p>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{email}</p>
+                      <span
+                        className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider border ${
+                          role === 'master'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                            : 'bg-gray-700/50 text-gray-400 border-gray-600/30'
+                        }`}
+                      >
+                        {role === 'master' && <Shield className="w-3 h-3" />}
+                        {role === 'master' ? 'Master' : 'Admin'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        navigate('/settings');
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-gray-500" />
+                      Settings
+                    </button>
+                    {isMaster && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          navigate('/admin-users');
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 transition-colors"
+                      >
+                        <Shield className="w-4 h-4 text-gray-500" />
+                        Admin Users
+                      </button>
+                    )}
+                    <a
+                      href={storefrontUrl('/')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 text-gray-500" />
+                      View Store
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <Outlet context={{ stats, statChanges, products, orders } as AdminOutletContext} />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6 w-full min-w-0">
+          <Outlet context={{ sidebarOpen: layoutSidebarOpen, stats, statChanges, products, orders } as AdminOutletContext} />
         </main>
       </div>
 
-      {/* Mobile Overlay */}
-      {mobileMenuOpen && (
+      {/* Mobile overlay — tap outside to close */}
+      {!isDesktop && mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
@@ -453,7 +578,7 @@ export default function AdminLayout() {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  rings: '#f59e0b',
+  rings: '#8b5cf6',
   necklaces: '#8b5cf6',
   earrings: '#10b981',
   bracelets: '#3b82f6',
@@ -544,13 +669,13 @@ function buildActivityFeed(orders: any[]) {
     else time = `${Math.floor(mins / 1440)} day${Math.floor(mins / 1440) > 1 ? 's' : ''} ago`;
 
     if (o.status === 'pending') {
-      activities.push({ action: 'New order received', detail: `#${o.id} from ${o.customer_name}`, time, type: 'order' });
+      activities.push({ action: 'New order received', detail: `${displayOrderId(o)} from ${o.customer_name}`, time, type: 'order' });
     } else if (o.status === 'shipped') {
-      activities.push({ action: 'Order shipped', detail: `#${o.id} dispatched`, time, type: 'order' });
+      activities.push({ action: 'Order shipped', detail: `${displayOrderId(o)} dispatched`, time, type: 'order' });
     } else if (o.status === 'delivered') {
-      activities.push({ action: 'Order delivered', detail: `#${o.id} to ${o.customer_name}`, time, type: 'order' });
+      activities.push({ action: 'Order delivered', detail: `${displayOrderId(o)} to ${o.customer_name}`, time, type: 'order' });
     } else {
-      activities.push({ action: `Order ${o.status}`, detail: `#${o.id} — रु ${Number(o.total || 0).toLocaleString('en-IN')}`, time, type: 'order' });
+      activities.push({ action: `Order ${o.status}`, detail: `${displayOrderId(o)} — रु ${Number(o.total || 0).toLocaleString('en-IN')}`, time, type: 'order' });
     }
   });
 
@@ -594,7 +719,7 @@ function exportDashboardWorkbook(payload: {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.orderStatusData), 'Order Status');
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.topProducts), 'Top Products');
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.recentOrders.map((order) => ({
-    id: order.id,
+    order_id: displayOrderId(order),
     customer_name: order.customer_name,
     customer_email: order.customer_email,
     status: order.status,
@@ -603,7 +728,7 @@ function exportDashboardWorkbook(payload: {
   }))), 'Recent Orders');
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.activityFeed), 'Activity Feed');
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(payload.orders.map((order) => ({
-    id: order.id,
+    order_id: displayOrderId(order),
     customer_name: order.customer_name,
     customer_email: order.customer_email,
     status: order.status,
@@ -653,15 +778,15 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Overview of your store activity and performance</p>
         </div>
         <button
           type="button"
           onClick={handleExport}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 text-gray-950 text-sm font-semibold hover:bg-amber-400 transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-400 transition-colors w-full sm:w-auto shrink-0"
         >
           <Download className="w-4 h-4" />
           Export Excel
@@ -693,8 +818,8 @@ export function AdminDashboard() {
           value={`रु ${stats.totalRevenue.toLocaleString('en-IN')}`}
           change={statChanges.revenue}
           iconText="रु"
-          iconColor="text-amber-400"
-          iconBg="bg-amber-500/10"
+          iconColor="text-violet-400"
+          iconBg="bg-violet-500/10"
           delay={0.2}
         />
         <StatCard

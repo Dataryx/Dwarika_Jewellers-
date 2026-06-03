@@ -10,7 +10,7 @@ interface TrafficChartProps {
   data: StatusData[];
 }
 
-const barColors = ['#f59e0b', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#14b8a6'];
+const barColors = ['#8b5cf6', '#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#14b8a6'];
 
 export default function TrafficChart({ data }: TrafficChartProps) {
   return (

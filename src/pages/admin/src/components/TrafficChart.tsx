@@ -39,7 +39,7 @@ export default function TrafficChart() {
             }}
             cursor={{ fill: '#1e293b', opacity: 0.5 }}
           />
-          <Bar dataKey="visitors" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="visitors" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

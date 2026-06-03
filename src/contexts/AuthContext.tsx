@@ -5,6 +5,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { resetSession } from '../lib/session';
 import { useStore } from '../lib/store';
 import { showNotification } from '../components/Notification';
+import { apiFetch } from '../lib/apiUrl';
 
 interface AuthContextType {
   user: SupabaseUser | null;
@@ -15,7 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function syncCustomer(user: SupabaseUser) {
-  fetch('/api/customers', {
+  apiFetch('/api/customers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

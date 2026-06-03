@@ -1,3 +1,4 @@
+import { apiFetch } from './apiUrl';
 export async function subscribeNewsletter(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -5,7 +6,7 @@ export async function subscribeNewsletter(email: string) {
     throw new Error('Email is required');
   }
 
-  const response = await fetch('/api/newsletter', {
+  const response = await apiFetch('/api/newsletter', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: normalizedEmail }),

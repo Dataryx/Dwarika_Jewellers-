@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send, Check, Loader2, Facebook, Instagram, Music2 } from 'lucide-react';
+import { apiFetch } from '../lib/apiUrl';
 
 interface ContactInfo {
   heroSubtitle: string;
@@ -25,7 +26,7 @@ export default function Contact() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    fetch('/api/contact-info').then((r) => r.json()).then(setInfo).catch(() => {});
+    apiFetch('/api/contact-info').then((r) => r.json()).then(setInfo).catch(() => {});
   }, []);
 
   const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -34,7 +35,7 @@ export default function Contact() {
     e.preventDefault();
     setSending(true);
     try {
-      await fetch('/api/contact', {
+      await apiFetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -235,7 +236,7 @@ export default function Contact() {
       {info.mapEmbedUrl && (
         <section className="bg-[#faf9f7]">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-16">
-            <div className="aspect-[16/5] bg-gray-200 flex items-center justify-center rounded-lg overflow-hidden">
+            <div className="aspect-[4/3] sm:aspect-[16/9] lg:aspect-[16/5] bg-gray-200 flex items-center justify-center rounded-lg overflow-hidden">
               <iframe
                 src={info.mapEmbedUrl}
                 className="w-full h-full border-0"

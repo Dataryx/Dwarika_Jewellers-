@@ -12,7 +12,7 @@ const typeColors: Record<string, string> = {
   order: 'bg-blue-400',
   product: 'bg-purple-400',
   customer: 'bg-emerald-400',
-  review: 'bg-amber-400',
+  review: 'bg-violet-400',
   alert: 'bg-red-400',
 };
 

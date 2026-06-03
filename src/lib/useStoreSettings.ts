@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from './apiUrl';
 
 export interface StoreSettings {
   taxRate: number;
   baseGoldRatePerGram: number;
   goldRatePerGram: number;
+  silverRatePerGram: number;
   diamondRatePerCarat: number;
   goldMakingChargeRate: number;
   gramsPerTola: number;
@@ -19,6 +21,7 @@ const DEFAULTS: StoreSettings = {
   taxRate: 13,
   baseGoldRatePerGram: 16358,
   goldRatePerGram: 16358,
+  silverRatePerGram: 434,
   diamondRatePerCarat: 28000,
   goldMakingChargeRate: 0.4,
   gramsPerTola: 11.664,
@@ -50,7 +53,7 @@ const SETTINGS_EVENT = 'dwarika:settings-updated';
 async function load(): Promise<StoreSettings> {
   if (cached) return cached;
   if (fetching) return fetching;
-  fetching = fetch('/api/settings')
+  fetching = apiFetch('/api/settings')
     .then((r) => r.json())
     .then((data) => {
       cached = { ...DEFAULTS, ...data };

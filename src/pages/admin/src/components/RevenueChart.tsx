@@ -47,8 +47,8 @@ export default function RevenueChart() {
         <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <defs>
             <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -71,7 +71,7 @@ export default function RevenueChart() {
           <Area
             type="monotone"
             dataKey="revenue"
-            stroke="#f59e0b"
+            stroke="#8b5cf6"
             strokeWidth={2}
             fill="url(#revenueGradient)"
           />

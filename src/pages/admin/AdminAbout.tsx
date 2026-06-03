@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Save, Loader2, Check, Plus, Trash2, X, Pencil, Image as ImageIcon, Users, BookOpen, Heart,
 } from 'lucide-react';
+import { adminFetch } from '../../lib/adminApi';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
 import { showNotification } from '../../components/Notification';
+import { AdminPage, teamGridClass, valuesGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
 
 interface TeamMember { id: number; name: string; role: string; image: string; }
 interface ValueItem { title: string; desc: string; }
@@ -23,9 +25,10 @@ interface AboutData {
 type Tab = 'story' | 'values' | 'team';
 
 const inputClass =
-  'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all';
+  'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
 
 export default function AdminAbout() {
+  const sidebarOpen = useAdminSidebarOpen();
   const [data, setData] = useState<AboutData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,7 +42,7 @@ export default function AdminAbout() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/about');
+      const res = await adminFetch('/api/about');
       const json = await res.json();
       setData(json);
     } catch { /* ignore */ }
@@ -53,7 +56,7 @@ export default function AdminAbout() {
     setSaving(true);
     try {
       const { team, ...content } = data;
-      const res = await fetch('/api/about', {
+      const res = await adminFetch('/api/about', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(content),
@@ -86,14 +89,14 @@ export default function AdminAbout() {
     setTeamSaving(true);
     try {
       if (editingMember !== null) {
-        await fetch('/api/about?section=team-update', {
+        await adminFetch('/api/about?section=team-update', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editingMember, ...teamForm }),
         });
         showNotification('Team member updated');
       } else {
-        await fetch('/api/about?section=team-add', {
+        await adminFetch('/api/about?section=team-add', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(teamForm),
@@ -112,7 +115,7 @@ export default function AdminAbout() {
   const handleTeamDelete = async (id: number) => {
     if (!confirm('Remove this team member?')) return;
     try {
-      await fetch('/api/about?section=team-delete', {
+      await adminFetch('/api/about?section=team-delete', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
@@ -141,7 +144,7 @@ export default function AdminAbout() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <AdminPage>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -151,7 +154,7 @@ export default function AdminAbout() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex flex-wrap gap-1 bg-gray-800 rounded-xl p-1 w-fit max-w-full">
         {tabs.map((t) => {
           const Icon = t.icon;
           return (
@@ -160,7 +163,7 @@ export default function AdminAbout() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 tab === t.id
-                  ? 'bg-gray-700 text-amber-500 shadow-sm'
+                  ? 'bg-gray-700 text-violet-500 shadow-sm'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
@@ -176,7 +179,7 @@ export default function AdminAbout() {
           {/* Hero Section */}
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-5">
             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-amber-500" /> Hero Banner
+              <ImageIcon className="w-4 h-4 text-violet-500" /> Hero Banner
             </h2>
             <ImageUploadField
               label="Hero Background Image"
@@ -201,7 +204,7 @@ export default function AdminAbout() {
           {/* Story Section */}
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-5">
             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-amber-500" /> Story Content
+              <BookOpen className="w-4 h-4 text-violet-500" /> Story Content
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
@@ -229,7 +232,7 @@ export default function AdminAbout() {
                 <button
                   type="button"
                   onClick={() => update('storyParagraphs', [...data.storyParagraphs, ''])}
-                  className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1"
+                  className="text-xs text-violet-500 hover:text-violet-400 flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" /> Add Paragraph
                 </button>
@@ -260,7 +263,7 @@ export default function AdminAbout() {
             </div>
           </div>
 
-          <button onClick={saveContent} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
+          <button onClick={saveContent} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
           </button>
@@ -273,17 +276,17 @@ export default function AdminAbout() {
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                <Heart className="w-4 h-4 text-amber-500" /> Our Values
+                <Heart className="w-4 h-4 text-violet-500" /> Our Values
               </h2>
               <button
                 onClick={() => update('values', [...data.values, { title: '', desc: '' }])}
-                className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1"
+                className="text-xs text-violet-500 hover:text-violet-400 flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" /> Add Value
               </button>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className={valuesGridClass(sidebarOpen)}>
               {data.values.map((v, i) => (
                 <div key={i} className="bg-gray-900/50 rounded-xl p-4 space-y-3 border border-gray-700/50">
                   <div className="flex items-center justify-between">
@@ -318,7 +321,7 @@ export default function AdminAbout() {
             </div>
           </div>
 
-          <button onClick={saveContent} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
+          <button onClick={saveContent} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
           </button>
@@ -332,7 +335,7 @@ export default function AdminAbout() {
             <p className="text-sm text-gray-400">Add and manage your team members shown in "Meet Our Artisans"</p>
             <button
               onClick={openTeamAdd}
-              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors"
             >
               <Plus className="w-4 h-4" /> Add Member
             </button>
@@ -390,7 +393,7 @@ export default function AdminAbout() {
                   <button
                     onClick={handleTeamSave}
                     disabled={teamSaving}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
                     {teamSaving ? 'Saving...' : editingMember !== null ? 'Update' : 'Add'}
@@ -413,7 +416,7 @@ export default function AdminAbout() {
               <p className="text-gray-500 text-sm">No team members yet. Click "Add Member" to get started.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className={teamGridClass(sidebarOpen)}>
               {data.team.map((member) => (
                 <motion.div
                   key={member.id}
@@ -435,7 +438,7 @@ export default function AdminAbout() {
                     </div>
                   </div>
                   <div className="p-3 flex justify-between items-center">
-                    <button onClick={() => openTeamEdit(member)} className="text-xs text-amber-500 hover:text-amber-400 font-medium flex items-center gap-1">
+                    <button onClick={() => openTeamEdit(member)} className="text-xs text-violet-500 hover:text-violet-400 font-medium flex items-center gap-1">
                       <Pencil className="w-3 h-3" /> Edit
                     </button>
                     <button onClick={() => handleTeamDelete(member.id)} className="text-gray-600 hover:text-red-400 transition-colors">
@@ -448,6 +451,6 @@ export default function AdminAbout() {
           )}
         </motion.div>
       )}
-    </div>
+    </AdminPage>
   );
 }

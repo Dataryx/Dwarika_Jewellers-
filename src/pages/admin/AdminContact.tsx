@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 import {
   Save, Loader2, Check, MapPin, Phone, Mail, Clock, Globe, MessageSquare, Trash2, Eye,
 } from 'lucide-react';
+import { adminFetch } from '../../lib/adminApi';
 import { showNotification } from '../../components/Notification';
+import { AdminPage, contactSocialGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
 
 interface ContactInfo {
   heroSubtitle: string;
@@ -35,9 +37,10 @@ interface Message {
 type Tab = 'info' | 'messages';
 
 const inputClass =
-  'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all';
+  'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
 
 export default function AdminContact() {
+  const sidebarOpen = useAdminSidebarOpen();
   const [info, setInfo] = useState<ContactInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,8 +51,8 @@ export default function AdminContact() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/contact-info').then((r) => r.json()),
-      fetch('/api/contact').then((r) => r.json()),
+      adminFetch('/api/contact-info').then((r) => r.json()),
+      adminFetch('/api/contact').then((r) => r.json()),
     ])
       .then(([infoData, msgData]) => {
         setInfo(infoData);
@@ -66,7 +69,7 @@ export default function AdminContact() {
     if (!info) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/contact-info', {
+      const res = await adminFetch('/api/contact-info', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(info),
@@ -85,7 +88,7 @@ export default function AdminContact() {
   const handleDeleteMsg = async (id: number) => {
     if (!confirm('Delete this message?')) return;
     try {
-      await fetch('/api/contact', {
+      await adminFetch('/api/contact', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
@@ -121,14 +124,14 @@ export default function AdminContact() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <AdminPage>
       <div>
         <h1 className="text-2xl font-semibold text-white">Contact Page</h1>
         <p className="text-gray-400 text-sm mt-1">Edit contact details and view customer messages</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex flex-wrap gap-1 bg-gray-800 rounded-xl p-1 w-fit max-w-full">
         {tabs.map((t) => {
           const Icon = t.icon;
           return (
@@ -136,12 +139,12 @@ export default function AdminContact() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                tab === t.id ? 'bg-gray-700 text-amber-500 shadow-sm' : 'text-gray-400 hover:text-white'
+                tab === t.id ? 'bg-gray-700 text-violet-500 shadow-sm' : 'text-gray-400 hover:text-white'
               }`}
             >
               <Icon className="w-4 h-4" /> {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded-full">{t.count}</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-violet-500/20 text-violet-500 text-[10px] font-bold rounded-full">{t.count}</span>
               )}
             </button>
           );
@@ -154,7 +157,7 @@ export default function AdminContact() {
           {/* Hero Section */}
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">
             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-              <Globe className="w-4 h-4 text-amber-500" /> Page Header
+              <Globe className="w-4 h-4 text-violet-500" /> Page Header
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
@@ -175,7 +178,7 @@ export default function AdminContact() {
           {/* Store Info */}
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">
             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-amber-500" /> Store Details
+              <MapPin className="w-4 h-4 text-violet-500" /> Store Details
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
@@ -207,7 +210,7 @@ export default function AdminContact() {
                 <input value={info.email} onChange={(e) => update('email', e.target.value)} className={inputClass} />
               </div>
             </div>
-            <div className="grid sm:grid-cols-3 gap-4">
+            <div className={contactSocialGridClass(sidebarOpen)}>
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-2 block">Facebook URL</label>
                 <input value={info.facebook} onChange={(e) => update('facebook', e.target.value)} className={inputClass} placeholder="https://facebook.com/yourpage" />
@@ -226,7 +229,7 @@ export default function AdminContact() {
           {/* Map */}
           <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">
             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-              <Globe className="w-4 h-4 text-amber-500" /> Google Maps Embed
+              <Globe className="w-4 h-4 text-violet-500" /> Google Maps Embed
             </h2>
             <div>
               <label className="text-sm font-medium text-gray-300 mb-2 block">Map Embed URL</label>
@@ -240,7 +243,7 @@ export default function AdminContact() {
             )}
           </div>
 
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
           </button>
@@ -266,8 +269,8 @@ export default function AdminContact() {
                     className="flex items-center gap-4 px-5 py-4 cursor-pointer"
                     onClick={() => setExpandedMsg(expandedMsg === msg.id ? null : msg.id)}
                   >
-                    <div className="w-9 h-9 bg-amber-500/10 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-amber-500 text-sm font-bold">{msg.name.charAt(0).toUpperCase()}</span>
+                    <div className="w-9 h-9 bg-violet-500/10 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-violet-500 text-sm font-bold">{msg.name.charAt(0).toUpperCase()}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -298,7 +301,7 @@ export default function AdminContact() {
                           <div><span className="text-gray-500">Phone:</span> <span className="text-white ml-1">{msg.phone || '—'}</span></div>
                         </div>
                         {msg.subject && (
-                          <div className="text-xs"><span className="text-gray-500">Subject:</span> <span className="text-amber-500 ml-1 font-medium">{msg.subject}</span></div>
+                          <div className="text-xs"><span className="text-gray-500">Subject:</span> <span className="text-violet-500 ml-1 font-medium">{msg.subject}</span></div>
                         )}
                         <div className="bg-gray-900/50 rounded-lg p-4">
                           <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
@@ -313,6 +316,6 @@ export default function AdminContact() {
           )}
         </motion.div>
       )}
-    </div>
+    </AdminPage>
   );
 }

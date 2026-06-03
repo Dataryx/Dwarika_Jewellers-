@@ -1,3 +1,4 @@
+import { apiFetch } from './apiUrl';
 const SESSION_KEY = 'dwarika_session_id';
 
 function generateId(): string {
@@ -16,7 +17,7 @@ export function getSessionId(): string {
 export function resetSession(): void {
   const oldId = localStorage.getItem(SESSION_KEY);
   if (oldId) {
-    fetch('/api/cart', {
+    apiFetch('/api/cart', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'X-Session-Id': oldId },
       body: JSON.stringify({ clear_all: true }),

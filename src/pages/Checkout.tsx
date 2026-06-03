@@ -5,9 +5,11 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useStoreSettings } from '../lib/useStoreSettings';
 import { formatPrice } from '../lib/currency';
+import { fetchCartFromServer } from '../lib/cartSync';
 import { cartHeaders } from '../lib/session';
 import { useAuth } from '../contexts/AuthContext';
 import { resolveProductPrice } from '../lib/pricing';
+import { apiFetch } from '../lib/apiUrl';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   'Cash on Delivery': <Banknote className="w-5 h-5 text-gray-600" />,
@@ -20,12 +22,14 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
 const FUNCTIONAL_METHODS = new Set(['Cash on Delivery']);
 
 export default function Checkout() {
-  const { cart, clearCart } = useStore();
+  const { cart, clearCart, setCart } = useStore();
   const navigate = useNavigate();
   const settings = useStoreSettings();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [cartLoading, setCartLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [orderError, setOrderError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
   const [formData, setFormData] = useState({
     firstName: '',
@@ -37,6 +41,12 @@ export default function Checkout() {
     state: '',
     zip: '',
   });
+
+  useEffect(() => {
+    fetchCartFromServer()
+      .then(setCart)
+      .finally(() => setCartLoading(false));
+  }, [setCart]);
 
   useEffect(() => {
     if (user?.email) {
@@ -59,7 +69,14 @@ export default function Checkout() {
     ? Object.entries(settings.paymentMethods)
         .filter(([, on]) => on)
         .map(([name]) => name)
+        .filter((name) => FUNCTIONAL_METHODS.has(name))
     : ['Cash on Delivery'];
+
+  useEffect(() => {
+    if (enabledMethods.length && !enabledMethods.includes(paymentMethod)) {
+      setPaymentMethod(enabledMethods[0]);
+    }
+  }, [enabledMethods, paymentMethod]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -69,17 +86,25 @@ export default function Checkout() {
     e.preventDefault();
     if (!FUNCTIONAL_METHODS.has(paymentMethod)) return;
     setLoading(true);
+    setOrderError('');
 
     try {
-      await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          ...cartHeaders(),
           ...(user?.email ? { 'X-User-Email': user.email } : {}),
         },
         body: JSON.stringify({
           customer_name: `${formData.firstName} ${formData.lastName}`,
           customer_email: user?.email || formData.email,
+          shipping_address: {
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zip: formData.zip,
+          },
           items: cart.map(item => ({
             product_id: item.product_id,
             quantity: item.quantity,
@@ -90,18 +115,31 @@ export default function Checkout() {
         }),
       });
 
-      await fetch('/api/cart', { method: 'DELETE', headers: cartHeaders(), body: JSON.stringify({ clear_all: true }) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Order could not be placed');
+      }
+
+      await apiFetch('/api/cart', { method: 'DELETE', headers: cartHeaders(), body: JSON.stringify({ clear_all: true }) });
       clearCart();
       setSuccess(true);
       setTimeout(() => navigate('/'), 3000);
     } catch (err) {
-      console.error('Checkout failed:', err);
+      setOrderError(err instanceof Error ? err.message : 'Checkout failed');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!authLoading && !user) {
+  if (cartLoading || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#faf9f7]">
+        <div className="w-8 h-8 border-2 border-[#c9a962] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#faf9f7]">
         <motion.div
@@ -195,7 +233,7 @@ export default function Checkout() {
               {/* Contact */}
               <div>
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-5">Contact</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input type="text" name="firstName" placeholder="First Name" value={formData.firstName} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
                   <input type="text" name="lastName" placeholder="Last Name" value={formData.lastName} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
                 </div>
@@ -207,7 +245,7 @@ export default function Checkout() {
               <div>
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-5">Shipping Address</h3>
                 <input type="text" name="address" placeholder="Address" value={formData.address} onChange={handleChange} required className="w-full px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
-                <div className="grid grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                   <input type="text" name="city" placeholder="City" value={formData.city} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
                   <input type="text" name="state" placeholder="State" value={formData.state} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
                   <input type="text" name="zip" placeholder="ZIP" value={formData.zip} onChange={handleChange} required className="px-4 py-3 bg-[#faf9f7] border-0 text-sm focus:outline-none focus:ring-1 focus:ring-[#c9a962]" />
@@ -224,7 +262,7 @@ export default function Checkout() {
                     return (
                       <label
                         key={method}
-                        className={`flex items-center gap-4 p-4 cursor-pointer transition-all ${
+                        className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 cursor-pointer transition-all ${
                           selected
                             ? functional
                               ? 'bg-[#c9a962]/10 border-2 border-[#c9a962]'
@@ -232,6 +270,7 @@ export default function Checkout() {
                             : 'bg-[#faf9f7] border-2 border-transparent hover:border-gray-200'
                         }`}
                       >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
                         <input
                           type="radio"
                           name="paymentMethod"
@@ -251,12 +290,13 @@ export default function Checkout() {
                         <div className="flex-1">
                           <p className={`text-sm font-medium ${functional ? 'text-gray-900' : 'text-gray-400'}`}>{method}</p>
                         </div>
-                        {selected && functional && <CheckCircle className="w-5 h-5 text-[#c9a962]" />}
+                        {selected && functional && <CheckCircle className="w-5 h-5 text-[#c9a962] shrink-0" />}
                         {!functional && (
-                          <span className="px-3 py-1 bg-gray-200 text-gray-500 text-[10px] font-medium tracking-wider uppercase rounded-full">
+                          <span className="px-3 py-1 bg-gray-200 text-gray-500 text-[10px] font-medium tracking-wider uppercase rounded-full shrink-0">
                             Coming Soon
                           </span>
                         )}
+                        </div>
                       </label>
                     );
                   })}
@@ -277,6 +317,11 @@ export default function Checkout() {
               </div>
 
               {/* Submit */}
+              {orderError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 px-4 py-3" role="alert">
+                  {orderError}
+                </p>
+              )}
               <motion.button
                 whileHover={isFunctional ? { scale: 1.01 } : {}}
                 whileTap={isFunctional ? { scale: 0.99 } : {}}

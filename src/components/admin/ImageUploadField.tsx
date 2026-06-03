@@ -53,7 +53,7 @@ export function ImageUploadField({
     <div className="space-y-2">
       {label ? (
         <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-          <LabelIcon className="w-4 h-4 text-amber-500 shrink-0" />
+          <LabelIcon className="w-4 h-4 text-violet-500 shrink-0" />
           {label}
         </label>
       ) : null}
@@ -104,7 +104,7 @@ export function ImageUploadField({
               value={urlFieldValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={isDataUrl ? 'Paste a URL to replace the uploaded image' : 'https://… or upload above'}
-              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-amber-500 disabled:opacity-50"
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-violet-500 disabled:opacity-50"
             />
           ) : null}
           {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}

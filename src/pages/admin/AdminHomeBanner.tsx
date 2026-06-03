@@ -2,17 +2,18 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Save, Type, Eye } from 'lucide-react';
 import {
-  getHomepageBanner,
   fetchHomepageBanner,
-  saveHomepageBannerToApi,
   DEFAULT_HOME_BANNER,
+  saveHomepageBannerToApi,
   type HomeBannerConfig,
 } from '../../lib/homepageBanner';
 import { showNotification } from '../../components/Notification';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
+import { AdminPage, bannerEditorGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
 
 export default function AdminHomeBanner() {
-  const [form, setForm] = useState<HomeBannerConfig>(() => getHomepageBanner());
+  const sidebarOpen = useAdminSidebarOpen();
+  const [form, setForm] = useState<HomeBannerConfig>(() => ({ ...DEFAULT_HOME_BANNER }));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function AdminHomeBanner() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <AdminPage>
       <div>
         <h1 className="text-2xl font-semibold text-white">Homepage Banner</h1>
         <p className="text-gray-400 text-sm mt-1">
@@ -59,7 +60,7 @@ export default function AdminHomeBanner() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
+      <div className={bannerEditorGridClass(sidebarOpen)}>
         <motion.form
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -78,14 +79,14 @@ export default function AdminHomeBanner() {
 
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
-              <Type className="w-4 h-4 text-amber-500" />
+              <Type className="w-4 h-4 text-violet-500" />
               Kicker (small line above title)
             </label>
             <input
               type="text"
               value={form.kicker}
               onChange={(e) => update('kicker', e.target.value)}
-              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500"
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
             />
           </div>
 
@@ -96,7 +97,7 @@ export default function AdminHomeBanner() {
                 type="text"
                 value={form.titleLine1}
                 onChange={(e) => update('titleLine1', e.target.value)}
-                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500"
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
               />
             </div>
             <div>
@@ -105,7 +106,7 @@ export default function AdminHomeBanner() {
                 type="text"
                 value={form.titleHighlight}
                 onChange={(e) => update('titleHighlight', e.target.value)}
-                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500"
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
               />
             </div>
           </div>
@@ -116,7 +117,7 @@ export default function AdminHomeBanner() {
               value={form.subtitle}
               onChange={(e) => update('subtitle', e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 resize-y"
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500 resize-y"
             />
           </div>
 
@@ -124,7 +125,7 @@ export default function AdminHomeBanner() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-amber-500 text-gray-900 font-medium rounded-lg hover:bg-amber-400 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-violet-500 text-white font-medium rounded-lg hover:bg-violet-400 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {saving ? 'Saving…' : 'Save Banner'}
@@ -173,6 +174,6 @@ export default function AdminHomeBanner() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminPage>
   );
 }

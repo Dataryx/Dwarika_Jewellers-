@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Save, Trash2, GripVertical, X, Loader2 } from 'lucide-react';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
 import { showNotification } from '../../components/Notification';
+import { AdminPage, categoryGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
+import { adminFetch } from '../../lib/adminApi';
 
 interface Category {
   id: number;
@@ -13,6 +15,7 @@ interface Category {
 }
 
 export default function AdminCategories() {
+  const sidebarOpen = useAdminSidebarOpen();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -22,7 +25,7 @@ export default function AdminCategories() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/categories');
+      const res = await adminFetch('/api/categories');
       const data = await res.json();
       setCategories(data);
     } catch (err) {
@@ -51,14 +54,14 @@ export default function AdminCategories() {
     setSaving(true);
     try {
       if (editId !== null) {
-        await fetch(`/api/categories?id=${editId}`, {
+        await adminFetch(`/api/categories?id=${editId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: form.name, image_url: form.image_url, path: form.name }),
         });
         showNotification('Category updated');
       } else {
-        await fetch('/api/categories', {
+        await adminFetch('/api/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: form.name, image_url: form.image_url }),
@@ -77,7 +80,7 @@ export default function AdminCategories() {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this category?')) return;
     try {
-      await fetch(`/api/categories?id=${id}`, { method: 'DELETE' });
+      await adminFetch(`/api/categories?id=${id}`, { method: 'DELETE' });
       showNotification('Category deleted');
       await fetchCategories();
     } catch {
@@ -94,15 +97,15 @@ export default function AdminCategories() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+    <AdminPage>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-white">Categories</h1>
           <p className="text-gray-400 text-sm mt-1">Manage product categories shown on the homepage</p>
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Category
         </button>
@@ -133,7 +136,7 @@ export default function AdminCategories() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="e.g. Rings, Necklaces..."
-                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50"
               />
             </div>
 
@@ -150,7 +153,7 @@ export default function AdminCategories() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Saving...' : editId !== null ? 'Update' : 'Create'}
@@ -172,7 +175,7 @@ export default function AdminCategories() {
           <p className="text-gray-500 text-sm">No categories yet. Click "Add Category" to create one.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className={categoryGridClass(sidebarOpen)}>
           {categories.map((cat) => (
             <motion.div
               key={cat.id}
@@ -194,7 +197,7 @@ export default function AdminCategories() {
               <div className="p-3 flex justify-between items-center">
                 <button
                   onClick={() => openEdit(cat)}
-                  className="text-xs text-amber-500 hover:text-amber-400 font-medium"
+                  className="text-xs text-violet-500 hover:text-violet-400 font-medium"
                 >
                   Edit
                 </button>
@@ -209,6 +212,6 @@ export default function AdminCategories() {
           ))}
         </div>
       )}
-    </div>
+    </AdminPage>
   );
 }

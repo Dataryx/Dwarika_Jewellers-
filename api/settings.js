@@ -1,4 +1,5 @@
 import { getMongoDb } from './_mongo.js';
+import { clearLivePricesCache } from './live-prices.js';
 
 const SETTINGS_ID = 'store_settings';
 
@@ -9,6 +10,7 @@ const DEFAULT_SETTINGS = {
   taxRate: 13,
   baseGoldRatePerGram: 16358,
   goldRatePerGram: 16358,
+  silverRatePerGram: 434,
   diamondRatePerCarat: 28000,
   goldMakingChargeRate: 0.4,
   gramsPerTola: 11.664,
@@ -56,7 +58,21 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       const body = req.body || {};
       delete body._id;
+      const pricingFields = [
+        'goldRatePerGram',
+        'silverRatePerGram',
+        'diamondRatePerCarat',
+        'gramsPerTola',
+        'goldMakingChargeRate',
+        'baseGoldRatePerGram',
+      ];
+      if (pricingFields.some((k) => k in body)) {
+        body.pricingUpdatedAt = new Date().toISOString();
+      }
       await col.updateOne({ _id: SETTINGS_ID }, { $set: body }, { upsert: true });
+      if (pricingFields.some((k) => k in body)) {
+        clearLivePricesCache();
+      }
       return res.status(200).json({ ok: true });
     }
 

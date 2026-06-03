@@ -49,7 +49,7 @@ export default function TopProducts({ products }: TopProductsProps) {
                 <Package className="w-3 h-3 text-gray-500" />
                 <span className="text-xs text-gray-400">{product.sales} sold</span>
                 <span className="text-xs text-gray-600">&middot;</span>
-                <span className={`text-xs ${product.stock <= 5 ? 'text-amber-400' : 'text-gray-400'}`}>
+                <span className={`text-xs ${product.stock <= 5 ? 'text-violet-400' : 'text-gray-400'}`}>
                   {product.stock} in stock
                 </span>
               </div>

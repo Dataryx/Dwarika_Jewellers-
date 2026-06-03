@@ -36,7 +36,7 @@ export function VideoUploadField({ label, value, onChange, disabled, hint }: Vid
   return (
     <div className="space-y-2">
       <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-        <Video className="w-4 h-4 text-amber-500 shrink-0" />
+        <Video className="w-4 h-4 text-violet-500 shrink-0" />
         {label}
       </label>
 

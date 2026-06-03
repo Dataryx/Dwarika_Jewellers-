@@ -1,64 +1,91 @@
 import { getMongoDb } from './_mongo.js';
+import { fetchNepalBullionRates } from './_fenegosidaRates.js';
+import { buildGoldRatesFromBullion, buildNepalGoldRates } from '../shared/goldRates.mjs';
 
-const TROY_OUNCE_TO_GRAMS = 31.1034768;
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 min
-let cache = null;
-let cacheAt = 0;
+const SETTINGS_ID = 'store_settings';
+const DEFAULT_GRAMS_PER_TOLA = 11.664;
+const DEFAULT_DIAMOND_PER_CARAT = 28000;
+const CACHE_TTL_MS = 30 * 60 * 1000; // FENEGOSIDA updates once daily
 
-function toNum(v, fallback = null) {
+function getCacheState() {
+  if (!globalThis.__dwarikaLivePrices) {
+    globalThis.__dwarikaLivePrices = { payload: null, at: 0 };
+  }
+  return globalThis.__dwarikaLivePrices;
+}
+
+export function clearLivePricesCache() {
+  const state = getCacheState();
+  state.payload = null;
+  state.at = 0;
+}
+
+function toNum(v, fallback = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
 
-async function fetchUsdNpr() {
-  const res = await fetch('https://open.er-api.com/v6/latest/USD');
-  if (!res.ok) throw new Error('Failed to fetch USD/NPR');
-  const data = await res.json();
-  const rate = toNum(data?.rates?.NPR);
-  if (!rate) throw new Error('USD/NPR missing');
-  return rate;
-}
+function buildPayloadFromBullion(bullion, settings) {
+  const gramsPerTola = toNum(settings?.gramsPerTola, DEFAULT_GRAMS_PER_TOLA) || DEFAULT_GRAMS_PER_TOLA;
+  const goldTypes = buildGoldRatesFromBullion(bullion, gramsPerTola);
+  const fine = goldTypes.find((g) => g.id === 'fine');
 
-async function fetchGoldSilverUsdPerOz() {
-  const res = await fetch('https://mintedmetal.com/api/prices.json');
-  if (!res.ok) throw new Error('Failed to fetch metal spot data');
-  const data = await res.json();
-  const gold = toNum(data?.metals?.gold?.price);
-  const silver = toNum(data?.metals?.silver?.price);
-  if (!gold || !silver) throw new Error('Gold/Silver missing');
+  const silverPerTola = Math.round(toNum(bullion.silverPerTola));
+  const silverPer10 = Math.round(
+    toNum(bullion.silverPer10Gram) || (silverPerTola * 10) / gramsPerTola
+  );
+  const silverPerGram = silverPerTola > 0 ? Math.round(silverPerTola / gramsPerTola) : 0;
+
+  const diamondPerCarat = toNum(settings?.diamondRatePerCarat, DEFAULT_DIAMOND_PER_CARAT);
+
   return {
-    goldUsdPerOz: gold,
-    silverUsdPerOz: silver,
-    updatedAt: data?.updatedAt || new Date().toISOString(),
-    source: 'Minted Metal (LBMA)',
+    currency: 'NPR',
+    gramsPerTola,
+    goldTypes,
+    rates: {
+      goldPerGram: fine?.perGram ?? 0,
+      goldPerTola: fine?.perTola ?? 0,
+      silverPerGram,
+      silverPerTola,
+      silverPer10Gram: silverPer10,
+      diamondPerCarat: Math.round(diamondPerCarat),
+    },
+    sources: {
+      gold: bullion.source,
+      silver: bullion.source,
+      diamond: 'Admin master rate',
+    },
+    updatedAt: bullion.updatedAt || new Date().toISOString(),
   };
 }
 
-async function fetchDiamondUsdPerCarat() {
-  const payload = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'tools/call',
-    params: {
-      name: 'get_diamond_price',
-      arguments: { carat: 1, color: 'G', clarity: 'VS2', shape: 'round' },
+function buildPayloadFromSettings(settings) {
+  const gramsPerTola = toNum(settings?.gramsPerTola, DEFAULT_GRAMS_PER_TOLA) || DEFAULT_GRAMS_PER_TOLA;
+  const goldTypes = buildNepalGoldRates(settings || {});
+  const fine = goldTypes.find((g) => g.id === 'fine');
+  const silverPerGram = toNum(settings?.silverRatePerGram, 434);
+  const silverPerTola = Math.round(silverPerGram * gramsPerTola);
+
+  return {
+    currency: 'NPR',
+    gramsPerTola,
+    goldTypes,
+    rates: {
+      goldPerGram: fine?.perGram ?? 0,
+      goldPerTola: fine?.perTola ?? 0,
+      silverPerGram: Math.round(silverPerGram),
+      silverPerTola,
+      silverPer10Gram: Math.round((silverPerTola * 10) / gramsPerTola),
+      diamondPerCarat: Math.round(toNum(settings?.diamondRatePerCarat, DEFAULT_DIAMOND_PER_CARAT)),
     },
+    sources: {
+      gold: 'Admin settings (FENEGOSIDA unavailable)',
+      silver: 'Admin settings',
+      diamond: 'Admin master rate',
+    },
+    updatedAt: settings?.pricingUpdatedAt || new Date().toISOString(),
+    stale: true,
   };
-  const res = await fetch('https://mcp.openfacet.net/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'MCP-Protocol-Version': '2025-06-18',
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error('Failed to fetch diamond data');
-  const data = await res.json();
-  const text = data?.result?.content?.[0]?.text || '';
-  const m = text.match(/Per Carat:\s*\$?\s*([0-9,]+(?:\.[0-9]+)?)/i);
-  const perCarat = toNum(m?.[1]?.replace(/,/g, ''));
-  if (!perCarat) throw new Error('Diamond per-carat value missing');
-  return { diamondUsdPerCarat: perCarat, source: 'OpenFacet' };
 }
 
 export default async function handler(req, res) {
@@ -70,50 +97,29 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    const state = getCacheState();
     const now = Date.now();
-    if (cache && now - cacheAt < CACHE_TTL_MS) {
-      return res.status(200).json({ ...cache, cached: true });
+    if (state.payload && now - state.at < CACHE_TTL_MS) {
+      return res.status(200).json({ ...state.payload, cached: true });
     }
 
-    const [usdNpr, metals] = await Promise.all([fetchUsdNpr(), fetchGoldSilverUsdPerOz()]);
-    const goldNprPerGram = (metals.goldUsdPerOz * usdNpr) / TROY_OUNCE_TO_GRAMS;
-    const silverNprPerGram = (metals.silverUsdPerOz * usdNpr) / TROY_OUNCE_TO_GRAMS;
+    const db = await getMongoDb();
+    const settings = await db.collection('settings').findOne({ _id: SETTINGS_ID });
 
-    // Diamond source can fail/rate-limit; fallback to store setting.
-    let diamondNprPerCarat = null;
-    let diamondSource = 'OpenFacet';
-    try {
-      const d = await fetchDiamondUsdPerCarat();
-      diamondNprPerCarat = d.diamondUsdPerCarat * usdNpr;
-    } catch {
-      const db = await getMongoDb();
-      const settings = await db.collection('settings').findOne({ _id: 'store_settings' });
-      diamondNprPerCarat = toNum(settings?.diamondRatePerCarat, 0);
-      diamondSource = 'Store Settings Fallback';
-    }
+    const bullion = await fetchNepalBullionRates();
+    const payload = bullion
+      ? buildPayloadFromBullion(bullion, settings)
+      : buildPayloadFromSettings(settings);
 
-    const payload = {
-      currency: 'NPR',
-      usdNpr,
-      rates: {
-        goldPerGram: Math.round(goldNprPerGram),
-        silverPerGram: Math.round(silverNprPerGram),
-        diamondPerCarat: Math.round(diamondNprPerCarat || 0),
-      },
-      sources: {
-        goldSilver: metals.source,
-        diamond: diamondSource,
-      },
-      updatedAt: metals.updatedAt || new Date().toISOString(),
-      cached: false,
-    };
-
-    cache = payload;
-    cacheAt = now;
-    return res.status(200).json(payload);
+    state.payload = payload;
+    state.at = now;
+    return res.status(200).json({ ...payload, cached: false });
   } catch (err) {
     console.error('Live prices API error:', err);
+    const state = getCacheState();
+    if (state.payload) {
+      return res.status(200).json({ ...state.payload, cached: true, stale: true });
+    }
     return res.status(500).json({ error: err.message || 'Failed to fetch live prices' });
   }
 }
-

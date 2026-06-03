@@ -3,9 +3,11 @@ import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { useEffect } from 'react';
+import { fetchCartFromServer } from '../lib/cartSync';
 import { cartHeaders } from '../lib/session';
 import { useStoreSettings } from '../lib/useStoreSettings';
 import { resolveProductPrice } from '../lib/pricing';
+import { apiFetch } from '../lib/apiUrl';
 
 export default function Cart() {
   const { cart, cartOpen, toggleCart, setCart } = useStore();
@@ -15,30 +17,25 @@ export default function Cart() {
     0
   );
 
-  const fetchCart = async () => {
-    try {
-      const res = await fetch('/api/cart', { headers: cartHeaders() });
-      const data = await res.json();
-      setCart(data);
-    } catch (err) {
-      console.error('Failed to fetch cart:', err);
-    }
+  const reloadCart = async () => {
+    const items = await fetchCartFromServer();
+    setCart(items);
   };
 
   useEffect(() => {
     if (cartOpen) {
-      fetchCart();
+      reloadCart();
     }
-  }, [cartOpen, setCart]);
+  }, [cartOpen]);
 
   const handleRemove = async (id: number) => {
     try {
-      await fetch('/api/cart', {
+      await apiFetch('/api/cart', {
         method: 'DELETE',
         headers: cartHeaders(),
         body: JSON.stringify({ id }),
       });
-      await fetchCart();
+      await reloadCart();
     } catch (err) {
       console.error('Failed to remove item:', err);
     }
@@ -47,12 +44,12 @@ export default function Cart() {
   const handleUpdateQuantity = async (id: number, quantity: number) => {
     if (quantity < 1) return;
     try {
-      await fetch(`/api/cart?id=${id}`, {
+      await apiFetch(`/api/cart?id=${id}`, {
         method: 'PUT',
         headers: cartHeaders(),
         body: JSON.stringify({ quantity }),
       });
-      await fetchCart();
+      await reloadCart();
     } catch (err) {
       console.error('Failed to update quantity:', err);
     }

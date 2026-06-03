@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Save, Eye, Loader2, Check } from 'lucide-react';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
 import { showNotification } from '../../components/Notification';
+import { adminFetch } from '../../lib/adminApi';
 
 interface StoryContent {
   imageUrl: string;
@@ -27,7 +28,7 @@ export default function AdminOurStory() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch('/api/our-story')
+    adminFetch('/api/our-story')
       .then((r) => r.json())
       .then((data) => setForm({ ...DEFAULTS, ...data }))
       .catch(() => {})
@@ -40,7 +41,7 @@ export default function AdminOurStory() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/our-story', {
+      const res = await adminFetch('/api/our-story', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -65,7 +66,7 @@ export default function AdminOurStory() {
   }
 
   const inputClass =
-    'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all';
+    'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -125,7 +126,7 @@ export default function AdminOurStory() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-400 text-gray-950 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-3 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
           >
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
