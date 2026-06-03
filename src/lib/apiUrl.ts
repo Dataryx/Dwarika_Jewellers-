@@ -1,4 +1,4 @@
-/** Resolve an API path — in dev uses current origin (5173 storefront / 5174 admin). */
+/** Resolve an API path - in dev uses current origin (5173 storefront / 5174 admin). */
 export function apiUrl(path: string) {
   const normalized = path.startsWith('/') ? path : `/${path}`;
 

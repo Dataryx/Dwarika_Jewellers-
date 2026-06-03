@@ -21,12 +21,47 @@ export type ReceiptOrder = {
   customer_name: string;
   customer_email: string;
   total: number;
+  subtotal?: number;
+  shipping_amount?: number;
+  tax_amount?: number;
+  tax_rate?: number;
   status: string;
   payment_method?: string;
   shipping_address?: ReceiptShippingAddress;
   created_at: string;
   items: ReceiptOrderItem[];
 };
+
+export function itemsSubtotal(items: ReceiptOrderItem[]): number {
+  return (items || []).reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0
+  );
+}
+
+export function getReceiptTotals(order: ReceiptOrder, defaults: { taxRate?: number } = {}) {
+  const taxRateDefault = defaults.taxRate ?? 13;
+  const subtotal =
+    order.subtotal != null ? Number(order.subtotal) : itemsSubtotal(order.items);
+  const total = Number(order.total || 0);
+  const taxRate = order.tax_rate != null ? Number(order.tax_rate) : taxRateDefault;
+
+  if (order.shipping_amount != null && order.tax_amount != null) {
+    return {
+      subtotal,
+      shipping: Number(order.shipping_amount),
+      tax: Number(order.tax_amount),
+      taxRate,
+      total,
+    };
+  }
+
+  const diff = Math.max(0, total - subtotal);
+  const tax = Math.round(subtotal * (taxRate / 100));
+  const shipping = Math.max(0, diff - tax);
+
+  return { subtotal, shipping, tax, taxRate, total };
+}
 
 export function formatPaymentMethod(method?: string): string {
   if (!method) return 'Cash on Delivery';
@@ -57,10 +92,6 @@ function formatReceiptDate(dateStr: string): string {
   });
 }
 
-function itemsSubtotal(items: ReceiptOrderItem[]): number {
-  return items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
-}
-
 function shippingLines(shipping?: ReceiptShippingAddress): string[] {
   if (!shipping) return [];
   const lines: string[] = [];
@@ -76,6 +107,21 @@ function drawRule(doc: import('jspdf').jsPDF, y: number, margin: number, width: 
   doc.line(margin, y, width - margin, y);
 }
 
+function drawSummaryLine(
+  doc: import('jspdf').jsPDF,
+  y: number,
+  colUnit: number,
+  colTotal: number,
+  label: string,
+  value: string,
+  bold = false
+) {
+  doc.setFont('helvetica', bold ? 'bold' : 'normal');
+  doc.setFontSize(bold ? 12 : 10);
+  doc.text(label, colUnit, y);
+  doc.text(value, colTotal, y);
+}
+
 export async function downloadOrderReceiptPdf(order: ReceiptOrder, storeName = 'Dwarika') {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -85,7 +131,7 @@ export async function downloadOrderReceiptPdf(order: ReceiptOrder, storeName = '
   let y = 22;
 
   const orderId = displayOrderId(order);
-  const subtotal = itemsSubtotal(order.items || []);
+  const totals = getReceiptTotals(order);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
@@ -124,9 +170,9 @@ export async function downloadOrderReceiptPdf(order: ReceiptOrder, storeName = '
   y += 6;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
-  doc.text(order.customer_name || '—', margin, y);
+  doc.text(order.customer_name || '-', margin, y);
   y += 5;
-  doc.text(order.customer_email || '—', margin, y);
+  doc.text(order.customer_email || '-', margin, y);
   y += 8;
 
   const ship = shippingLines(order.shipping_address);
@@ -194,15 +240,21 @@ export async function downloadOrderReceiptPdf(order: ReceiptOrder, storeName = '
   drawRule(doc, y, margin, pageWidth);
   y += 8;
 
-  doc.setFont('helvetica', 'normal');
-  doc.text('Subtotal', colUnit, y);
-  doc.text(formatMoney(subtotal), colTotal, y);
+  doc.setTextColor(40, 40, 40);
+  drawSummaryLine(doc, y, colUnit, colTotal, 'Subtotal', formatMoney(totals.subtotal));
   y += 7;
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('TOTAL', colUnit, y);
-  doc.text(formatMoney(Number(order.total || 0)), colTotal, y);
+  drawSummaryLine(
+    doc,
+    y,
+    colUnit,
+    colTotal,
+    'Shipping',
+    totals.shipping === 0 ? 'Free' : formatMoney(totals.shipping)
+  );
+  y += 7;
+  drawSummaryLine(doc, y, colUnit, colTotal, `Tax (${totals.taxRate}%)`, formatMoney(totals.tax));
+  y += 7;
+  drawSummaryLine(doc, y, colUnit, colTotal, 'TOTAL', formatMoney(totals.total), true);
 
   y += 14;
   drawRule(doc, y, margin, pageWidth);

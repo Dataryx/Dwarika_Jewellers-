@@ -4,8 +4,8 @@ This repo ships **two separate frontends** from one Git repository. Deploy them 
 
 | App | URL example | Build | Output | Backend |
 |-----|-------------|-------|--------|---------|
-| **Storefront** (customers) | `https://your-store.com` | `npm run build` | `dist` | Yes — `/api/*` |
-| **Admin dashboard** | `https://admin.your-store.com` | `npm run build:admin` | `dist-admin` | No — calls store API |
+| **Storefront** (customers) | `https://your-store.com` | `npm run build` | `dist` | Yes - `/api/*` |
+| **Admin dashboard** | `https://admin.your-store.com` | `npm run build:admin` | `dist-admin` | No - calls store API |
 
 ```
   Customer browser                    Admin browser
@@ -25,9 +25,8 @@ This repo ships **two separate frontends** from one Git repository. Deploy them 
 ## Prerequisites
 
 1. **MongoDB Atlas** cluster with a connection string (`MONGODB_URI`).
-2. **Atlas Network Access** — allow Vercel (e.g. `0.0.0.0/0` during setup; tighten later if needed).
-3. **Supabase** project (customer login) — optional if you replace auth later.
-4. Code pushed to **GitHub** (or GitLab/Bitbucket) and linked to Vercel.
+2. **Atlas Network Access** - allow Vercel (e.g. `0.0.0.0/0` during setup; tighten later if needed).
+3. Code pushed to **GitHub** (or GitLab/Bitbucket) and linked to Vercel.
 
 ### One-time database setup (run locally against Atlas)
 
@@ -37,12 +36,12 @@ cp .env.example .env
 
 npm install
 npm run mongo:setup
-npm run seed:smtp   # optional — or configure SMTP in Admin → SMTP after deploy
+npm run seed:smtp   # optional - or configure SMTP in Admin → SMTP after deploy
 ```
 
 ---
 
-## Project 1 — Storefront + API
+## Project 1 - Storefront + API
 
 ### Create the Vercel project
 
@@ -55,7 +54,7 @@ npm run seed:smtp   # optional — or configure SMTP in Admin → SMTP after dep
    |---------|--------|
    | Build Command | `npm run build` |
    | Output Directory | `dist` |
-   | Install Command | `npm install` |
+   | Install Command | `npm ci` |
 
 5. Deploy.
 
@@ -65,21 +64,18 @@ The `api/` folder is deployed automatically as **Vercel Serverless Functions** a
 
 Set these on the **store** project for **Production** (and Preview if you use preview URLs).
 
-**Required — API / database**
+**Required - API / database**
 
 | Variable | Description |
 |----------|-------------|
 | `MONGODB_URI` | MongoDB Atlas connection string |
 | `MONGODB_DB_NAME` | Database name (e.g. `Dwarika`) |
 
-**Required — customer auth (Supabase)**
+**Required - customer auth**
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `NEXT_PUBLIC_SUPABASE_URL` | Same as `VITE_SUPABASE_URL` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Same as anon key |
+| `CUSTOMER_AUTH_SECRET` | Long random string for signing customer login tokens (optional in dev; **required in production**) |
 
 **Optional**
 
@@ -95,14 +91,14 @@ Set these on the **store** project for **Production** (and Preview if you use pr
 
 After deploy, open:
 
-- `https://<your-store>.vercel.app/` — homepage
-- `https://<your-store>.vercel.app/api/settings` — should return JSON
+- `https://<your-store>.vercel.app/` - homepage
+- `https://<your-store>.vercel.app/api/settings` - should return JSON
 
-Note your **production store URL** — the admin project needs it next.
+Note your **production store URL** - the admin project needs it next.
 
 ---
 
-## Project 2 — Admin dashboard
+## Project 2 - Admin dashboard
 
 ### Create the second Vercel project
 
@@ -114,7 +110,7 @@ Note your **production store URL** — the admin project needs it next.
    |---------|--------|
    | Build Command | `npm run build:admin` |
    | Output Directory | `dist-admin` |
-   | Install Command | `npm install` |
+   | Install Command | `npm ci` |
 
    Or deploy via CLI with the admin config:
 
@@ -122,7 +118,7 @@ Note your **production store URL** — the admin project needs it next.
    vercel --prod --local-config vercel.admin.json
    ```
 
-### Environment variables (build-time — required)
+### Environment variables (build-time - required)
 
 Admin reads these at **build** time (`vite build --mode admin` loads `.env.admin` locally; on Vercel set them in the dashboard).
 
@@ -137,8 +133,8 @@ Replace with your **Project 1** URL (or custom domain after you add one).
 
 ### Verify admin
 
-- `https://<your-admin>.vercel.app/login` — admin login
-- After login, open Products or Orders — Network tab should show requests to `VITE_API_URL/api/...`, not `localhost`.
+- `https://<your-admin>.vercel.app/login` - admin login
+- After login, open Products or Orders - Network tab should show requests to `VITE_API_URL/api/...`, not `localhost`.
 
 ---
 
@@ -152,10 +148,7 @@ Replace with your **Project 1** URL (or custom domain after you add one).
 After attaching domains:
 
 1. Update **admin** env vars to the final store URL and **redeploy admin**.
-2. **Supabase** → Authentication → URL Configuration:
-   - Site URL → your store URL
-   - Redirect URLs → store URL + auth callback paths
-3. **Google Cloud Console** (if using Google login) — add production redirect URIs.
+2. Configure **SMTP** in Admin → SMTP for order receipts and password reset emails.
 
 ---
 
@@ -170,7 +163,7 @@ npm run dev
 | Storefront | http://localhost:5173 |
 | Admin | http://localhost:5174/login |
 
-Both use local `/api/*` via the Vite dev plugin. Copy `.env.example` → `.env` for MongoDB and Supabase.
+Both use local `/api/*` via the Vite dev plugin. Copy `.env.example` → `.env` for MongoDB.
 
 For a local admin production build test:
 
@@ -189,13 +182,12 @@ npm run preview:admin
 □ MongoDB Atlas network access allows Vercel
 □ npm run mongo:setup run against Atlas
 □ Store Vercel project deployed (build → dist)
-□ Store env: MONGODB_URI, MONGODB_DB_NAME, Supabase keys
+□ Store env: MONGODB_URI, MONGODB_DB_NAME, CUSTOMER_AUTH_SECRET
 □ /api/settings returns JSON on production store URL
 □ Admin Vercel project deployed (build:admin → dist-admin)
 □ Admin env: VITE_API_URL + VITE_STOREFRONT_URL = store URL
 □ Admin login works; API calls hit store domain
-□ Supabase redirect URLs updated for production
-□ SMTP configured in Admin → SMTP (if sending receipt emails)
+□ SMTP configured in Admin → SMTP (order receipts + password reset)
 ```
 
 ---
@@ -208,7 +200,7 @@ npm run preview:admin
 | Admin empty / API errors | Set `VITE_API_URL` to the **store** URL; redeploy admin |
 | `MONGODB_URI is not set` | Add env vars to **store** project; redeploy store |
 | Mongo connection timeout | Atlas → Network Access → allow Vercel IPs |
-| Customer login fails in prod | Supabase Site URL + Redirect URLs |
+| Customer login fails in prod | Set `CUSTOMER_AUTH_SECRET` on Vercel; configure SMTP for password reset |
 | SMTP works locally, not on Vercel | Configure in Admin → SMTP (MongoDB), use Gmail App Password |
 | 404 on admin refresh | `vercel.admin.json` rewrites are correct (`/(.*)` → `/index.html`) |
 

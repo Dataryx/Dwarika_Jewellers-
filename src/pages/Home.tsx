@@ -8,8 +8,9 @@ import { Product } from '../lib/store';
 import { subscribeNewsletter } from '../lib/newsletter';
 import {
   fetchHomepageBanner,
-  DEFAULT_HOME_BANNER,
+  readCachedHomepageBanner,
   subscribeHomepageBanner,
+  bannerImageKey,
   type HomeBannerConfig,
 } from '../lib/homepageBanner';
 import { apiFetch } from '../lib/apiUrl';
@@ -28,14 +29,15 @@ const DEFAULT_CATEGORIES = [
 const DEFAULT_STORY: StoryContent = {
   imageUrl: 'https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=800',
   title: 'Crafted with Passion, Worn with Pride',
-  paragraph1: 'Every piece in our collection is meticulously handcrafted by master artisans who have dedicated their lives to the art of jewelry making. We source only the finest materials—from ethically mined gemstones to recycled precious metals.',
+  paragraph1: 'Every piece in our collection is meticulously handcrafted by master artisans who have dedicated their lives to the art of jewelry making. We source only the finest materials-from ethically mined gemstones to recycled precious metals.',
   paragraph2: 'Our commitment to quality means each piece is designed to last a lifetime and become a treasured heirloom passed down through generations.',
 };
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [banner, setBanner] = useState<HomeBannerConfig>(() => ({ ...DEFAULT_HOME_BANNER }));
+  const [banner, setBanner] = useState<HomeBannerConfig | null>(() => readCachedHomepageBanner());
+  const [bannerReady, setBannerReady] = useState(() => readCachedHomepageBanner() !== null);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [story, setStory] = useState<StoryContent>(DEFAULT_STORY);
   const [categorySlide, setCategorySlide] = useState(0);
@@ -57,9 +59,18 @@ export default function Home() {
   }, [maxFeaturedSlide]);
 
   useEffect(() => {
-    fetchHomepageBanner().then(setBanner);
+    let cancelled = false;
+    fetchHomepageBanner().then((data) => {
+      if (cancelled) return;
+      setBanner(data);
+      setBannerReady(true);
+    });
     return subscribeHomepageBanner(() => {
-      fetchHomepageBanner().then(setBanner);
+      fetchHomepageBanner().then((data) => {
+        if (cancelled) return;
+        setBanner(data);
+        setBannerReady(true);
+      });
     });
   }, []);
 
@@ -109,21 +120,26 @@ export default function Home() {
   return (
     <div className="overflow-hidden">
       <LivePriceStrip />
-      {/* Hero — full-screen banner */}
+      {/* Hero - full-screen banner */}
       <section className="relative min-h-[85vh] sm:min-h-screen flex items-center overflow-hidden">
         <div className="absolute inset-0">
-          <motion.div
-            initial={{ scale: 1.06, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
-            className="absolute inset-0 overflow-hidden"
-          >
-            <img
-              src={banner.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover object-center"
-            />
-          </motion.div>
+          {!bannerReady || !banner ? (
+            <div className="absolute inset-0 bg-[#1a1a1a] animate-pulse" aria-hidden />
+          ) : (
+            <motion.div
+              initial={{ scale: 1.06, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1.2, ease: [0.23, 1, 0.32, 1] }}
+              className="absolute inset-0 overflow-hidden"
+            >
+              <img
+                key={bannerImageKey(banner)}
+                src={banner.imageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover object-center"
+              />
+            </motion.div>
+          )}
           <div
             className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 sm:via-black/20 to-transparent"
             aria-hidden
@@ -132,6 +148,14 @@ export default function Home() {
 
         <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 lg:px-12 py-32 pt-28 sm:pt-32 lg:pt-36">
           <div className="max-w-xl">
+            {!bannerReady || !banner ? (
+              <div className="space-y-4 animate-pulse" aria-hidden>
+                <div className="h-3 w-32 bg-white/20 rounded" />
+                <div className="h-16 w-full max-w-md bg-white/15 rounded" />
+                <div className="h-12 w-full max-w-sm bg-white/10 rounded" />
+              </div>
+            ) : (
+              <>
             <motion.span
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -179,6 +203,8 @@ export default function Home() {
                 </motion.button>
               </Link>
             </motion.div>
+              </>
+            )}
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import { sendMailMessage, loadSmtpConfig } from './_smtp.js';
+import { getReceiptTotals } from '../shared/orderTotals.mjs';
 
 function displayOrderId(order) {
   if (order.order_uid) return order.order_uid;
@@ -76,11 +77,7 @@ function buildItemsRows(items) {
 
 export function buildOrderReceiptEmailHtml(order, storeName = 'Dwarika') {
   const orderId = displayOrderId(order);
-  const subtotal = (order.items || []).reduce(
-    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
-    0
-  );
-  const total = Number(order.total || 0);
+  const totals = getReceiptTotals(order);
   const statusLabel = escapeHtml(String(order.status || 'pending').replace(/^\w/, (c) => c.toUpperCase()));
 
   return `<!DOCTYPE html>
@@ -172,11 +169,19 @@ export function buildOrderReceiptEmailHtml(order, storeName = 'Dwarika') {
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="font-size:14px;color:#6b7280;padding-bottom:8px;">Subtotal</td>
-                        <td align="right" style="font-size:14px;color:#374151;padding-bottom:8px;">${formatMoney(subtotal)}</td>
+                        <td align="right" style="font-size:14px;color:#374151;padding-bottom:8px;">${formatMoney(totals.subtotal)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:14px;color:#6b7280;padding-bottom:8px;">Shipping</td>
+                        <td align="right" style="font-size:14px;color:#374151;padding-bottom:8px;">${totals.shipping === 0 ? 'Free' : formatMoney(totals.shipping)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:14px;color:#6b7280;padding-bottom:8px;">Tax (${totals.taxRate}%)</td>
+                        <td align="right" style="font-size:14px;color:#374151;padding-bottom:8px;">${formatMoney(totals.tax)}</td>
                       </tr>
                       <tr>
                         <td style="font-size:16px;color:#111827;font-weight:700;padding-top:8px;border-top:1px solid #e5e7eb;">Order Total</td>
-                        <td align="right" style="font-size:18px;color:#9a7b2f;font-weight:700;padding-top:8px;border-top:1px solid #e5e7eb;">${formatMoney(total)}</td>
+                        <td align="right" style="font-size:18px;color:#9a7b2f;font-weight:700;padding-top:8px;border-top:1px solid #e5e7eb;">${formatMoney(totals.total)}</td>
                       </tr>
                     </table>
                   </td>
@@ -206,7 +211,7 @@ export function buildOrderReceiptEmailHtml(order, storeName = 'Dwarika') {
 function buildPlainText(order, storeName) {
   const orderId = displayOrderId(order);
   const lines = [
-    `${storeName} — Order Confirmation`,
+    `${storeName} - Order Confirmation`,
     `Order ID: ${orderId}`,
     `Date: ${formatDate(order.created_at)}`,
     `Status: ${order.status}`,
@@ -233,7 +238,7 @@ export async function sendOrderReceiptEmail(order, options = {}) {
 
   await sendMailMessage({
     to,
-    subject: `Your ${storeName} receipt — ${orderId}`,
+    subject: `Your ${storeName} receipt - ${orderId}`,
     html,
     text,
   });

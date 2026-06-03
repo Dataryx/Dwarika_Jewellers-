@@ -37,6 +37,22 @@ export default function AdminCategories() {
 
   useEffect(() => { fetchCategories(); }, []);
 
+  useEffect(() => {
+    if (!showForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowForm(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [showForm]);
+
+  const closeForm = () => setShowForm(false);
+
   const openNew = () => {
     setEditId(null);
     setForm({ name: '', image_url: '' });
@@ -68,7 +84,7 @@ export default function AdminCategories() {
         });
         showNotification('Category created');
       }
-      setShowForm(false);
+      closeForm();
       await fetchCategories();
     } catch {
       showNotification('Failed to save category');
@@ -115,56 +131,85 @@ export default function AdminCategories() {
       <AnimatePresence>
         {showForm && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-gray-800 border border-gray-700 rounded-2xl p-6 space-y-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6"
+            onClick={closeForm}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-form-heading"
           >
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">
-                {editId !== null ? 'Edit Category' : 'New Category'}
-              </h3>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-gray-900 border border-violet-500/30 rounded-2xl p-5 sm:p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                    <Plus className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div>
+                    <h3 id="category-form-heading" className="text-base font-semibold text-white">
+                      {editId !== null ? 'Edit Category' : 'New Category'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {editId !== null ? 'Update name or image for this category' : 'Add a category to the homepage grid'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="p-2 text-gray-500 hover:text-white shrink-0"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">Category Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Rings, Necklaces..."
-                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50"
-              />
-            </div>
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-2 block">Category Name</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Rings, Necklaces..."
+                  className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50"
+                />
+              </div>
 
-            <ImageUploadField
-              label="Category Image"
-              value={form.image_url}
-              onChange={(v) => setForm({ ...form, image_url: v })}
-              disabled={saving}
-              allowUrl={false}
-              hint="Upload from computer. Will be shown on the homepage category grid."
-            />
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleSave}
+              <ImageUploadField
+                label="Category Image"
+                value={form.image_url}
+                onChange={(v) => setForm({ ...form, image_url: v })}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                {saving ? 'Saving...' : editId !== null ? 'Update' : 'Create'}
-              </button>
-              <button
-                onClick={() => setShowForm(false)}
-                className="px-5 py-2.5 bg-gray-700 text-gray-300 rounded-xl text-sm hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-            </div>
+                allowUrl={false}
+                hint="Upload from computer. Will be shown on the homepage category grid."
+              />
+
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="px-5 py-2.5 bg-gray-700 text-gray-300 rounded-xl text-sm hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Saving...' : editId !== null ? 'Update' : 'Create'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -205,6 +205,7 @@ export function AdminProductList() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-700">
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Product</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Category</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Price</th>
@@ -216,17 +217,18 @@ export function AdminProductList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">Loading...</td>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">Loading...</td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
+                  <td colSpan={7} className="py-12 text-center">
                     <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
                     <p className="text-sm text-gray-500">No products found</p>
                   </td>
                 </tr>
               ) : (
                 paginatedProducts.map((product, i) => {
+                  const sn = (safePage - 1) * PAGE_SIZE + i + 1;
                   const status = stockStatus(product.stock);
                   return (
                     <motion.tr
@@ -236,6 +238,7 @@ export function AdminProductList() {
                       transition={{ delay: 0.25 + i * 0.04 }}
                       className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                     >
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-400">{sn}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -411,11 +414,11 @@ export function AdminProductList() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
                       <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Category</p>
-                      <p className="text-sm text-gray-300 capitalize">{viewingProduct.category || '—'}</p>
+                      <p className="text-sm text-gray-300 capitalize">{viewingProduct.category || '-'}</p>
                     </div>
                     <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
                       <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Material</p>
-                      <p className="text-sm text-gray-300">{viewingProduct.material || '—'}</p>
+                      <p className="text-sm text-gray-300">{viewingProduct.material || '-'}</p>
                     </div>
                   </div>
 

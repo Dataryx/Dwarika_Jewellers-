@@ -7,6 +7,8 @@ import {
 import { adminFetch } from '../../../lib/adminApi';
 import { useAdminAuth } from '../../../lib/adminAuth';
 import { showNotification } from '../../Notification';
+import { PASSWORD_REQUIREMENTS_HINT, validatePasswordStrength } from '../../../lib/passwordPolicy';
+import { validateEmailAddress } from '../../../lib/emailValidation';
 
 export interface AdminUserRecord {
   email: string;
@@ -59,7 +61,7 @@ const editInputClass =
   'w-full px-4 py-2.5 bg-gray-950/80 border border-amber-500/20 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/40';
 
 function formatDate(dateStr?: string) {
-  if (!dateStr) return '—';
+  if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -172,8 +174,18 @@ export default function AdminUsersList() {
       setCreateError('Phone number is required');
       return;
     }
+    const emailCheck = validateEmailAddress(createForm.email);
+    if (!emailCheck.ok) {
+      setCreateError(emailCheck.error || 'Please enter a valid email address');
+      return;
+    }
     if (createForm.password !== createForm.passwordConfirm) {
       setCreateError('Passwords do not match');
+      return;
+    }
+    const createPasswordCheck = validatePasswordStrength(createForm.password);
+    if (!createPasswordCheck.ok) {
+      setCreateError(createPasswordCheck.error || 'Password does not meet requirements');
       return;
     }
     setCreateSubmitting(true);
@@ -185,7 +197,7 @@ export default function AdminUsersList() {
         body: JSON.stringify({
           action: 'create',
           name: createForm.name,
-          email: createForm.email,
+          email: emailCheck.normalized,
           phone: createForm.phone,
           address: createForm.address,
           city: createForm.city,
@@ -219,6 +231,13 @@ export default function AdminUsersList() {
     if (editPassword && editPassword !== editPasswordConfirm) {
       setUpdateError('Passwords do not match');
       return;
+    }
+    if (editPassword) {
+      const editPasswordCheck = validatePasswordStrength(editPassword);
+      if (!editPasswordCheck.ok) {
+        setUpdateError(editPasswordCheck.error || 'Password does not meet requirements');
+        return;
+      }
     }
 
     setUpdateSubmitting(true);
@@ -426,10 +445,10 @@ export default function AdminUsersList() {
                       value={createForm.password}
                       onChange={(e) => setCreateField('password', e.target.value)}
                       required
-                      minLength={6}
-                      placeholder="Min. 6 characters"
+                      placeholder="Strong password"
                       className={inputClass}
                     />
+                    <p className="text-[11px] text-gray-500 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Confirm password *</label>
@@ -585,7 +604,7 @@ export default function AdminUsersList() {
                     Reset password
                   </div>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    Leave both fields empty to keep the current password unchanged.
+                    Leave both fields empty to keep the current password unchanged. {PASSWORD_REQUIREMENTS_HINT}
                   </p>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1.5">New password</label>
@@ -593,7 +612,6 @@ export default function AdminUsersList() {
                       type="password"
                       value={editPassword}
                       onChange={(e) => setEditPassword(e.target.value)}
-                      minLength={6}
                       placeholder="Optional"
                       className={editInputClass}
                     />
@@ -698,7 +716,7 @@ export default function AdminUsersList() {
                   <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Phone</p>
                   <p className="text-sm text-gray-300 flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                    {viewingAdmin.phone || '—'}
+                    {viewingAdmin.phone || '-'}
                   </p>
                 </div>
                 {(viewingAdmin.address || viewingAdmin.city) && (
@@ -707,7 +725,7 @@ export default function AdminUsersList() {
                     <p className="text-sm text-gray-300 flex items-start gap-2">
                       <MapPin className="w-3.5 h-3.5 text-gray-500 shrink-0 mt-0.5" />
                       <span>
-                        {viewingAdmin.address || '—'}
+                        {viewingAdmin.address || '-'}
                         {viewingAdmin.city && (
                           <>
                             {viewingAdmin.address && <br />}
@@ -788,6 +806,7 @@ export default function AdminUsersList() {
           <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-700">
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Name</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Email</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Role</th>
@@ -804,12 +823,13 @@ export default function AdminUsersList() {
                 </tr>
               ) : admins.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     No admin users found
                   </td>
                 </tr>
               ) : (
                 admins.map((admin, i) => {
+                  const sn = i + 1;
                   const isCurrent = currentEmail === admin.email;
                   const isMasterRow = admin.role === 'master';
                   const canManage = isMaster && !isMasterRow;
@@ -822,6 +842,7 @@ export default function AdminUsersList() {
                       transition={{ delay: 0.05 * i }}
                       className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                     >
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-400">{sn}</td>
                       <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-2 min-w-0">
                           <p className="text-sm font-medium text-white truncate">{admin.name}</p>

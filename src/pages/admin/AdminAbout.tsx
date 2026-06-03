@@ -51,6 +51,22 @@ export default function AdminAbout() {
 
   useEffect(() => { fetchData(); }, []);
 
+  useEffect(() => {
+    if (!showTeamForm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowTeamForm(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [showTeamForm]);
+
+  const closeTeamForm = () => setShowTeamForm(false);
+
   const saveContent = async () => {
     if (!data) return;
     setSaving(true);
@@ -103,7 +119,7 @@ export default function AdminAbout() {
         });
         showNotification('Team member added');
       }
-      setShowTeamForm(false);
+      closeTeamForm();
       await fetchData();
     } catch {
       showNotification('Failed to save');
@@ -149,7 +165,7 @@ export default function AdminAbout() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-white">About Page</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage your About page sections — story, values, and team</p>
+          <p className="text-gray-400 text-sm mt-1">Manage your About page sections - story, values, and team</p>
         </div>
       </div>
 
@@ -341,74 +357,6 @@ export default function AdminAbout() {
             </button>
           </div>
 
-          {/* Team Form */}
-          <AnimatePresence>
-            {showTeamForm && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-gray-800 border border-gray-700 rounded-2xl p-6 space-y-5"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-white">
-                    {editingMember !== null ? 'Edit Team Member' : 'New Team Member'}
-                  </h3>
-                  <button onClick={() => setShowTeamForm(false)} className="text-gray-500 hover:text-white">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <ImageUploadField
-                  label="Profile Photo"
-                  value={teamForm.image}
-                  onChange={(v) => setTeamForm({ ...teamForm, image: v })}
-                  disabled={teamSaving}
-                  allowUrl={false}
-                  hint="Upload a photo from your computer"
-                />
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-300 mb-2 block">Name</label>
-                    <input
-                      value={teamForm.name}
-                      onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
-                      className={inputClass}
-                      placeholder="e.g. Laxmi Shrestha"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-300 mb-2 block">Role / Description</label>
-                    <input
-                      value={teamForm.role}
-                      onChange={(e) => setTeamForm({ ...teamForm, role: e.target.value })}
-                      className={inputClass}
-                      placeholder="e.g. Master Jeweler"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleTeamSave}
-                    disabled={teamSaving}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4" />
-                    {teamSaving ? 'Saving...' : editingMember !== null ? 'Update' : 'Add'}
-                  </button>
-                  <button
-                    onClick={() => setShowTeamForm(false)}
-                    className="px-5 py-2.5 bg-gray-700 text-gray-300 rounded-xl text-sm hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Team Grid */}
           {data.team.length === 0 ? (
             <div className="text-center py-16 bg-gray-800/60 border border-gray-700 rounded-2xl">
@@ -451,6 +399,105 @@ export default function AdminAbout() {
           )}
         </motion.div>
       )}
+
+      {/* Team member modal */}
+      <AnimatePresence>
+        {showTeamForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6"
+            onClick={closeTeamForm}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="team-form-heading"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-gray-900 border border-violet-500/30 rounded-2xl p-5 sm:p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div>
+                    <h3 id="team-form-heading" className="text-base font-semibold text-white">
+                      {editingMember !== null ? 'Edit Team Member' : 'New Team Member'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {editingMember !== null
+                        ? 'Update photo, name, or role'
+                        : 'Add an artisan to Meet Our Artisans'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeTeamForm}
+                  className="p-2 text-gray-500 hover:text-white shrink-0"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <ImageUploadField
+                label="Profile Photo"
+                value={teamForm.image}
+                onChange={(v) => setTeamForm({ ...teamForm, image: v })}
+                disabled={teamSaving}
+                allowUrl={false}
+                hint="Upload a photo from your computer"
+              />
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-300 mb-2 block">Name</label>
+                  <input
+                    value={teamForm.name}
+                    onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                    className={inputClass}
+                    placeholder="e.g. Laxmi Shrestha"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-300 mb-2 block">Role / Description</label>
+                  <input
+                    value={teamForm.role}
+                    onChange={(e) => setTeamForm({ ...teamForm, role: e.target.value })}
+                    className={inputClass}
+                    placeholder="e.g. Master Jeweler"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={closeTeamForm}
+                  className="px-5 py-2.5 bg-gray-700 text-gray-300 rounded-xl text-sm hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTeamSave}
+                  disabled={teamSaving}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {teamSaving ? 'Saving...' : editingMember !== null ? 'Update' : 'Add'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AdminPage>
   );
 }

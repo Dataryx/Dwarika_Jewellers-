@@ -276,7 +276,7 @@ export default function AdminSmtp() {
                 spellCheck={false}
               />
               <p className="text-[11px] text-gray-600 mt-1">
-                For Gmail, use an App Password — not your login password.
+                For Gmail, use an App Password - not your login password.
               </p>
             </div>
             <div>

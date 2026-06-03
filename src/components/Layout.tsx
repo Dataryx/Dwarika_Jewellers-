@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Menu, X, Gem, Search, User, LogOut, Heart, Package } from 'lucide-react';
+import { ShoppingBag, Menu, X, Search, User, LogOut, Heart, Package } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
@@ -8,6 +8,7 @@ import { subscribeNewsletter } from '../lib/newsletter';
 import { fetchCartFromServer } from '../lib/cartSync';
 import SearchModal from './SearchModal';
 import Cart from './Cart';
+import BrandWordmark from './BrandWordmark';
 
 const navLinks = [
   { name: 'Shop', path: '/collections' },
@@ -106,10 +107,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <Link to="/" onClick={scrollToTop} className="flex items-center gap-2 sm:gap-3 group min-w-0">
-              <motion.div whileHover={{ rotate: 180, scale: 1.1 }} transition={{ duration: 0.6 }}>
-                <Gem className="w-6 h-6 sm:w-7 sm:h-7 text-[#c9a962]" />
-              </motion.div>
-              <span className="text-base sm:text-xl font-serif font-medium tracking-[0.12em] sm:tracking-[0.2em] text-gray-900 truncate">DWARIKA</span>
+              <img
+                src="/favicon.svg?v=5"
+                alt="Dwarika"
+                className="w-10 h-10 sm:w-11 sm:h-11 shrink-0"
+              />
+              <BrandWordmark size="nav" />
             </Link>
 
             <nav className="hidden lg:flex items-center gap-12">
@@ -141,7 +144,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {user ? (
                         <>
                           <div className="px-4 py-3 border-b border-gray-100">
-                            <p className="text-sm font-medium text-gray-900 truncate">{user.user_metadata?.full_name || 'User'}</p>
+                            <p className="text-sm font-medium text-gray-900 truncate">{user.name || 'User'}</p>
                             <p className="text-xs text-gray-500 truncate">{user.email}</p>
                           </div>
                           <Link to="/account" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"><User className="w-4 h-4" />My Account</Link>
@@ -209,8 +212,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 sm:gap-12 lg:gap-8">
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3 mb-6">
-                <Gem className="w-6 h-6 text-[#c9a962]" />
-                <span className="text-lg font-serif font-medium tracking-[0.2em] text-gray-900">DWARIKA</span>
+                <img src="/favicon.svg?v=5" alt="Dwarika" className="w-10 h-10 shrink-0" />
+                <BrandWordmark size="footer" />
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">Crafting timeless pieces since 1985. Each design tells a story of artistry and elegance.</p>
             </div>

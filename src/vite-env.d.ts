@@ -1,13 +1,6 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL?: string;
-  readonly VITE_SUPABASE_ANON_KEY?: string;
-  readonly NEXT_PUBLIC_SUPABASE_URL?: string;
-  readonly NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
-  readonly NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
-  readonly VITE_GOOGLE_CLIENT_ID?: string;
-  readonly VITE_GOOGLE_AUTH_PROXY?: string;
   readonly VITE_STOREFRONT_URL?: string;
   readonly VITE_ADMIN_URL?: string;
   readonly VITE_API_URL?: string;
@@ -16,3 +9,4 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+

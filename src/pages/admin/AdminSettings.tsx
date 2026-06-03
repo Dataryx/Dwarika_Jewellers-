@@ -5,6 +5,7 @@ import { invalidateSettingsCache } from '../../lib/useStoreSettings';
 import { AdminPage, settingsFormGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
 import { adminFetch } from '../../lib/adminApi';
 import { useAdminAuth } from '../../lib/adminAuth';
+import { PASSWORD_REQUIREMENTS_HINT, validatePasswordStrength } from '../../lib/passwordPolicy';
 
 const tabs = [
   { id: 'pricing', label: 'Pricing', icon: Gem },
@@ -244,7 +245,7 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
       {pricingTab === 'gold' && (
         <div className={gridClass}>
           <div>
-            <label className={labelClass}>Master Gold Rate — 24k fine (रु / gram)</label>
+            <label className={labelClass}>Master Gold Rate - 24k fine (रु / gram)</label>
             <input
               type="number"
               step="0.01"
@@ -253,7 +254,7 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
               className={inputClass}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Per tola: रु {Math.round(settings.goldRatePerGram * settings.gramsPerTola).toLocaleString('en-IN')} — homepage ticker & product pricing
+              Per tola: रु {Math.round(settings.goldRatePerGram * settings.gramsPerTola).toLocaleString('en-IN')} - homepage ticker & product pricing
             </p>
           </div>
           <div>
@@ -411,7 +412,7 @@ function PaymentSettings({ settings, update }: SettingsProps) {
     <div className="space-y-4">
       <p className="text-xs text-gray-500">
         Toggle payment methods on or off. Only enabled methods appear on checkout. Currently only{' '}
-        <span className="text-gray-300">Cash on Delivery</span> can complete an order — other methods are shown as coming soon.
+        <span className="text-gray-300">Cash on Delivery</span> can complete an order - other methods are shown as coming soon.
       </p>
 
       {/* Add new method */}
@@ -541,8 +542,9 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
       setMsg({ type: 'err', text: 'New passwords do not match.' });
       return;
     }
-    if (newPw.length < 6) {
-      setMsg({ type: 'err', text: 'New password must be at least 6 characters.' });
+    const passwordCheck = validatePasswordStrength(newPw);
+    if (!passwordCheck.ok) {
+      setMsg({ type: 'err', text: passwordCheck.error || 'Password does not meet requirements.' });
       return;
     }
     setSaving(true);
@@ -599,6 +601,7 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
             placeholder="••••••••"
             className={`${inputClass} placeholder-gray-500`}
           />
+          <p className="text-xs text-gray-500 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
         </div>
         <div>
           <label className={labelClass}>Confirm Password</label>

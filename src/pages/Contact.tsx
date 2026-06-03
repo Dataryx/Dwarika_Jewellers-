@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send, Check, Loader2, Facebook, Instagram, Music2 } from 'lucide-react';
 import { apiFetch } from '../lib/apiUrl';
+import { validateEmailAddress } from '../lib/emailValidation';
 
 interface ContactInfo {
   heroSubtitle: string;
@@ -24,6 +25,7 @@ export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     apiFetch('/api/contact-info').then((r) => r.json()).then(setInfo).catch(() => {});
@@ -33,17 +35,29 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+    const emailCheck = validateEmailAddress(form.email);
+    if (!emailCheck.ok) {
+      setFormError(emailCheck.error || 'Please enter a valid email address');
+      return;
+    }
     setSending(true);
     try {
-      await apiFetch('/api/contact', {
+      const res = await apiFetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, email: emailCheck.normalized }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not send message');
+      }
       setSent(true);
       setForm({ name: '', email: '', phone: '', subject: '', message: '' });
       setTimeout(() => setSent(false), 5000);
-    } catch { /* ignore */ }
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Could not send message');
+    }
     finally { setSending(false); }
   };
 
@@ -190,6 +204,9 @@ export default function Contact() {
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
+                    {formError && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>
+                    )}
                     <div className="grid sm:grid-cols-2 gap-5">
                       <div>
                         <label className="text-xs font-medium tracking-wider uppercase text-gray-600 mb-2 block">Full Name</label>

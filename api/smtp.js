@@ -66,7 +66,7 @@ export default async function handler(req, res) {
           {
             quantity: 1,
             price: 125000,
-            product: { name: 'Gold Ring — Sample Item' },
+            product: { name: 'Gold Ring - Sample Item' },
           },
         ],
       };

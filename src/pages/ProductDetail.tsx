@@ -78,7 +78,7 @@ export default function ProductDetail() {
     const url = `${window.location.origin}/product/${product.id}`;
     const shareData = {
       title: product.name,
-      text: `${product.name} — रु ${displayPrice.toLocaleString('en-IN')}`,
+      text: `${product.name} - रु ${displayPrice.toLocaleString('en-IN')}`,
       url,
     };
 

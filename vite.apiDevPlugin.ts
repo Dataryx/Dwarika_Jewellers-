@@ -14,13 +14,13 @@ const API_ROUTES = new Set([
   'admin-auth',
   'customers',
   'categories',
-  'our-story',
   'about',
   'contact',
   'contact-info',
   'live-prices',
   'newsletter',
   'smtp',
+  'customer-auth',
 ])
 
 function createResAdapter(res: ServerResponse) {

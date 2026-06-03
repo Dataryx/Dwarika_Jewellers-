@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { WishlistProvider } from './lib/WishlistContext';
-import { handleGoogleRedirect } from './lib/googleAuth';
 import { useState, useCallback } from 'react';
 import Layout from './components/Layout';
 import Notification, { setNotificationCallback } from './components/Notification';
@@ -17,11 +16,11 @@ import CustomDesign from './pages/CustomDesign';
 import RepairMaintenance from './pages/RepairMaintenance';
 import Certification from './pages/Certification';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import Account from './pages/Account';
 import Orders from './pages/Orders';
 import Wishlist from './pages/Wishlist';
-
-handleGoogleRedirect();
 
 function App() {
   const [notification, setNotification] = useState('');
@@ -57,7 +56,8 @@ function App() {
               <Route path="/repair-maintenance" element={<RepairMaintenance />} />
               <Route path="/certification" element={<Certification />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<Login />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/account" element={<Account />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/wishlist" element={<Wishlist />} />

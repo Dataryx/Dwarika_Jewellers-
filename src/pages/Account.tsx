@@ -1,21 +1,32 @@
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Edit2, Save, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { updateCustomerProfile } from '../lib/customerAuth';
 
 export default function Account() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: user?.user_metadata?.full_name || '',
-    email: user?.email || '',
-    phone: user?.user_metadata?.phone || '',
-    address: user?.user_metadata?.address || '',
-    city: user?.user_metadata?.city || '',
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
   });
+
+  useEffect(() => {
+    if (!user) return;
+    setFormData({
+      fullName: user.name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      address: user.address || '',
+      city: user.city || '',
+    });
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,15 +35,13 @@ export default function Account() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          full_name: formData.fullName,
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-        }
+      await updateCustomerProfile({
+        name: formData.fullName,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
       });
-      if (error) throw error;
+      await refreshUser();
       setSaved(true);
       setEditing(false);
       setTimeout(() => setSaved(false), 3000);
@@ -42,6 +51,14 @@ export default function Account() {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-24 flex items-center justify-center bg-[#faf9f7]">
+        <p className="text-gray-500">Please sign in to view your account.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-8 bg-[#faf9f7]">
@@ -207,3 +224,4 @@ export default function Account() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-// @ts-expect-error Shared ESM module — no bundled types
+// @ts-expect-error Shared ESM module - no bundled types
 export { GOLD_TYPES, buildNepalGoldRates } from '../../shared/goldRates.mjs';
 
 export type NepalGoldRateRow = {

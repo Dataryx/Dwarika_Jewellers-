@@ -2,8 +2,8 @@ import { getMongoDb, docToJson } from './_mongo.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Email');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
@@ -68,6 +68,23 @@ export default async function handler(req, res) {
       };
       await col.insertOne(doc);
       return res.status(201).json(docToJson(doc));
+    }
+
+    if (req.method === 'PUT') {
+      const { email, name, phone } = req.body || {};
+      const targetEmail = String(email || '').trim().toLowerCase();
+      if (!targetEmail) return res.status(400).json({ error: 'email is required' });
+
+      const existing = await col.findOne({ _id: targetEmail });
+      if (!existing) return res.status(404).json({ error: 'Customer not found' });
+
+      const updates = {};
+      if (name !== undefined) updates.name = String(name).trim();
+      if (phone !== undefined) updates.phone = String(phone).trim();
+
+      await col.updateOne({ _id: targetEmail }, { $set: updates });
+      const updated = await col.findOne({ _id: targetEmail });
+      return res.status(200).json(docToJson(updated));
     }
 
     res.status(405).json({ error: 'Method not allowed' });

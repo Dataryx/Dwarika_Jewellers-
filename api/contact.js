@@ -1,4 +1,5 @@
 import { getMongoDb, nextSeq } from './_mongo.js';
+import { validateEmailAddress } from '../shared/emailValidation.mjs';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,11 +21,15 @@ export default async function handler(req, res) {
       if (!name || !email || !message) {
         return res.status(400).json({ error: 'Name, email and message are required' });
       }
+      const emailCheck = validateEmailAddress(email);
+      if (!emailCheck.ok) {
+        return res.status(400).json({ error: emailCheck.error });
+      }
       const id = await nextSeq('contact_message');
       const doc = {
         _id: id,
         name: name.trim(),
-        email: email.trim(),
+        email: emailCheck.normalized,
         phone: (phone || '').trim(),
         subject: (subject || '').trim(),
         message: message.trim(),

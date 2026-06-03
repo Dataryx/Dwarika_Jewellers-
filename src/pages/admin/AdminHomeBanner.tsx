@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Save, Type, Eye } from 'lucide-react';
 import {
   fetchHomepageBanner,
-  DEFAULT_HOME_BANNER,
   saveHomepageBannerToApi,
   type HomeBannerConfig,
 } from '../../lib/homepageBanner';
@@ -13,19 +12,31 @@ import { AdminPage, bannerEditorGridClass, useAdminSidebarOpen } from '../../lib
 
 export default function AdminHomeBanner() {
   const sidebarOpen = useAdminSidebarOpen();
-  const [form, setForm] = useState<HomeBannerConfig>(() => ({ ...DEFAULT_HOME_BANNER }));
+  const [form, setForm] = useState<HomeBannerConfig | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchHomepageBanner().then(setForm);
+    let cancelled = false;
+    fetchHomepageBanner()
+      .then((data) => {
+        if (!cancelled) setForm(data);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const update = <K extends keyof HomeBannerConfig>(key: K, value: HomeBannerConfig[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form) return;
     if (!form.imageUrl.trim()) {
       showNotification('Please upload a hero image.');
       return;
@@ -33,21 +44,11 @@ export default function AdminHomeBanner() {
     setSaving(true);
     try {
       await saveHomepageBannerToApi(form);
-      showNotification('Homepage banner saved. Refresh the homepage to see changes.');
+      showNotification('Homepage banner saved.');
     } catch (err: unknown) {
       showNotification(err instanceof Error ? err.message : 'Could not save banner.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const resetDefaults = async () => {
-    setForm({ ...DEFAULT_HOME_BANNER });
-    try {
-      await saveHomepageBannerToApi({ ...DEFAULT_HOME_BANNER });
-      showNotification('Banner reset to defaults.');
-    } catch (err: unknown) {
-      showNotification(err instanceof Error ? err.message : 'Could not save.');
     }
   };
 
@@ -60,6 +61,11 @@ export default function AdminHomeBanner() {
         </p>
       </div>
 
+      {loading || !form ? (
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center text-gray-500 text-sm">
+          Loading banner…
+        </div>
+      ) : (
       <div className={bannerEditorGridClass(sidebarOpen)}>
         <motion.form
           initial={{ opacity: 0, y: 8 }}
@@ -130,13 +136,6 @@ export default function AdminHomeBanner() {
               <Save className="w-4 h-4" />
               {saving ? 'Saving…' : 'Save Banner'}
             </button>
-            <button
-              type="button"
-              onClick={resetDefaults}
-              className="px-5 py-3 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 text-sm"
-            >
-              Reset to Defaults
-            </button>
           </div>
         </motion.form>
 
@@ -148,11 +147,15 @@ export default function AdminHomeBanner() {
           </p>
           <div className="rounded-xl border border-gray-700 overflow-hidden shadow-xl">
             <div className="relative aspect-[16/10]">
-              <img
-                src={form.imageUrl.trim() || DEFAULT_HOME_BANNER.imageUrl}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+              {form.imageUrl.trim() ? (
+                <img
+                  src={form.imageUrl.trim()}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gray-800" />
+              )}
               <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent" />
               <div className="absolute inset-0 flex items-center p-6 sm:p-10">
                 <div className="max-w-[220px] sm:max-w-xs">
@@ -174,6 +177,7 @@ export default function AdminHomeBanner() {
           </div>
         </div>
       </div>
+      )}
     </AdminPage>
   );
 }

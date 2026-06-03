@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AdminAuthProvider, AdminGuard } from '../lib/adminAuth';
 import AdminLayout, { AdminDashboard } from '../pages/admin/AdminLayout';
 import AdminLogin from '../pages/admin/AdminLogin';
+import AdminResetPassword from '../pages/admin/AdminResetPassword';
 import AdminProducts, { AdminProductList, AdminProductForm } from '../pages/admin/AdminProducts';
 import AdminOrders from '../pages/admin/AdminOrders';
 import AdminUsers from '../pages/admin/AdminUsers';
@@ -35,6 +36,7 @@ export default function AdminApp() {
       <AdminAuthProvider>
         <Routes>
           <Route path="/login" element={<AdminLogin />} />
+          <Route path="/reset-password" element={<AdminResetPassword />} />
           <Route
             path="/"
             element={

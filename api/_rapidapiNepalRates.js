@@ -80,7 +80,7 @@ function parseRapidApiBody(json) {
     tejabiPer10Gram,
     silverPerTola,
     silverPer10Gram,
-    source: 'RapidAPI — Gold and Silver Price in Nepal',
+    source: 'RapidAPI - Gold and Silver Price in Nepal',
     updatedAt: root?.updated_at ?? root?.updatedAt ?? new Date().toISOString(),
   };
 }

@@ -2,11 +2,17 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Filter, Eye, Download, CheckCircle, XCircle, Truck, Clock, X,
-  ShoppingCart, Package, Mail, User, Calendar, CreditCard, Hash, MapPin, Phone, FileDown,
+  ShoppingCart, Package, Mail, User, Calendar, CreditCard, Hash, MapPin, Phone, FileDown, Loader2,
 } from 'lucide-react';
 import { adminFetch } from '../../lib/adminApi';
 import { displayOrderId } from '../../lib/orderId';
-import { downloadOrderReceiptPdf, formatPaymentMethod } from '../../lib/orderReceipt';
+import { downloadOrderReceiptPdf, formatPaymentMethod, getReceiptTotals } from '../../lib/orderReceipt';
+import OrderFulfillmentProgress, { orderStatusIcons } from '../../components/OrderFulfillmentProgress';
+import {
+  matchesOrderPeriod,
+  ORDER_PERIOD_LABELS,
+  type OrderPeriodFilter,
+} from '../../lib/orderPeriodFilter';
 
 interface OrderItem {
   id: number;
@@ -30,6 +36,10 @@ interface Order {
   customer_name: string;
   customer_email: string;
   total: number;
+  subtotal?: number;
+  shipping_amount?: number;
+  tax_amount?: number;
+  tax_rate?: number;
   status: string;
   payment_method?: string;
   shipping_address?: ShippingAddress;
@@ -64,17 +74,7 @@ const statusStyles: Record<string, string> = {
   cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
-const statusIcons: Record<string, React.ReactNode> = {
-  pending: <Clock className="w-3.5 h-3.5" />,
-  confirmed: <CheckCircle className="w-3.5 h-3.5" />,
-  processing: <ShoppingCart className="w-3.5 h-3.5" />,
-  shipped: <Truck className="w-3.5 h-3.5" />,
-  delivered: <Package className="w-3.5 h-3.5" />,
-  completed: <CheckCircle className="w-3.5 h-3.5" />,
-  cancelled: <XCircle className="w-3.5 h-3.5" />,
-};
-
-const STATUS_FLOW = ['pending', 'confirmed', 'shipped', 'delivered'] as const;
+const statusIcons: Record<string, React.ReactNode> = orderStatusIcons;
 
 function formatOrderDateTime(dateStr: string) {
   const d = new Date(dateStr);
@@ -125,63 +125,16 @@ function StatusBadge({ status, large }: { status: string; large?: boolean }) {
   );
 }
 
-function StatusTimeline({ status }: { status: string }) {
-  if (status === 'cancelled') {
-    return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 flex items-center gap-2">
-        <XCircle className="w-4 h-4 text-red-400 shrink-0" />
-        <p className="text-sm text-red-300">This order was cancelled and cannot be fulfilled.</p>
-      </div>
-    );
-  }
-
-  const currentIdx = STATUS_FLOW.indexOf(status as (typeof STATUS_FLOW)[number]);
-  const activeIdx = currentIdx >= 0 ? currentIdx : 0;
-
-  return (
-    <div className="rounded-xl border border-gray-700/80 bg-gray-800/40 p-4">
-      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">Fulfillment progress</p>
-      <div className="flex items-center gap-1 sm:gap-2">
-        {STATUS_FLOW.map((step, idx) => {
-          const done = idx <= activeIdx;
-          const current = idx === activeIdx;
-          return (
-            <div key={step} className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0">
-              <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center border shrink-0 ${
-                    done
-                      ? current
-                        ? 'bg-violet-500/20 border-violet-500/50 text-violet-300'
-                        : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                      : 'bg-gray-800 border-gray-700 text-gray-600'
-                  }`}
-                >
-                  {statusIcons[step]}
-                </div>
-                <span className={`text-[10px] sm:text-xs capitalize truncate w-full text-center ${done ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {step}
-                </span>
-              </div>
-              {idx < STATUS_FLOW.length - 1 && (
-                <div className={`h-px flex-1 min-w-[8px] mb-5 ${idx < activeIdx ? 'bg-emerald-500/40' : 'bg-gray-700'}`} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [periodFilter, setPeriodFilter] = useState<OrderPeriodFilter>('all');
   const [search, setSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [page, setPage] = useState(1);
   const [storeName, setStoreName] = useState('Dwarika');
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -195,7 +148,7 @@ export default function AdminOrders() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, periodFilter]);
 
   useEffect(() => {
     if (!selectedOrder) return;
@@ -251,7 +204,8 @@ export default function AdminOrders() {
         String(o.id).includes(search) ||
         displayOrderId(o).toLowerCase().includes(search.toLowerCase());
       const matchesFilter = statusFilter === 'all' || o.status === statusFilter;
-      return matchesSearch && matchesFilter;
+      const matchesPeriod = matchesOrderPeriod(o.created_at, periodFilter);
+      return matchesSearch && matchesFilter && matchesPeriod;
     })
   );
 
@@ -280,6 +234,17 @@ export default function AdminOrders() {
     .filter(o => o.status !== 'cancelled')
     .reduce((sum, o) => sum + Number(o.total || 0), 0);
 
+  const handleDownloadReceipt = async (order: Order) => {
+    setDownloadingId(order.id);
+    try {
+      await downloadOrderReceiptPdf(order, storeName);
+    } catch (err) {
+      console.error('Failed to download receipt:', err);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -293,13 +258,13 @@ export default function AdminOrders() {
           <p className="text-sm text-gray-500 mt-1">
             {loading
               ? 'Manage and track customer orders'
-              : `${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'} · ${PAGE_SIZE} per page`}
+              : `${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'} ? ${PAGE_SIZE} per page`}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
           <div className="bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-2.5 min-h-[42px] w-full sm:min-w-[200px] sm:w-auto flex items-center justify-between gap-3">
             <p className="text-sm text-gray-400">Filtered Revenue</p>
-            <p className="text-sm font-semibold text-white">रु {totalRevenue.toLocaleString('en-IN')}</p>
+            <p className="text-sm font-semibold text-white">?? {totalRevenue.toLocaleString('en-IN')}</p>
           </div>
           <button
             onClick={() => {
@@ -356,6 +321,31 @@ export default function AdminOrders() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="w-4 h-4 text-gray-500 shrink-0" />
+          {(['all', 'month', '3months', 'year'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setPeriodFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                periodFilter === f
+                  ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
+                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-300'
+              }`}
+            >
+              {ORDER_PERIOD_LABELS[f]}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.12 }}
+        className="flex items-center gap-2 flex-wrap"
+      >
+        <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Status</span>
+        <div className="flex items-center gap-2 flex-wrap">
           {['all', ...statusOptions].map((f) => (
             <button
               key={f}
@@ -450,17 +440,33 @@ export default function AdminOrders() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-400">{order.items?.length || 0}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-white text-right">रु {Number(order.total).toLocaleString('en-IN')}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-white text-right">?? {Number(order.total).toLocaleString('en-IN')}</td>
                     <td className="px-6 py-4">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrder(order)}
-                        title="View order"
-                        aria-label={`View order ${displayOrderId(order)}`}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-500/10 text-gray-400 hover:text-violet-400 transition-colors ml-auto"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleDownloadReceipt(order)}
+                          disabled={downloadingId === order.id}
+                          title="Download receipt"
+                          aria-label={`Download receipt for ${displayOrderId(order)}`}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-400 transition-colors disabled:opacity-50"
+                        >
+                          {downloadingId === order.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FileDown className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(order)}
+                          title="View order"
+                          aria-label={`View order ${displayOrderId(order)}`}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-500/10 text-gray-400 hover:text-violet-400 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                   );
@@ -472,8 +478,8 @@ export default function AdminOrders() {
         {!loading && filteredOrders.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-t border-gray-700">
             <p className="text-sm text-gray-500">
-              Showing {rangeStart}–{rangeEnd} of {filteredOrders.length}
-              <span className="hidden sm:inline text-gray-600"> · {PAGE_SIZE} per page</span>
+              Showing {rangeStart}?{rangeEnd} of {filteredOrders.length}
+              <span className="hidden sm:inline text-gray-600"> ? {PAGE_SIZE} per page</span>
             </p>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button
@@ -546,7 +552,7 @@ export default function AdminOrders() {
                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
                       <Calendar className="w-3 h-3 shrink-0" />
                       {formatOrderDateTime(selectedOrder.created_at).date}
-                      <span className="text-gray-600">·</span>
+                      <span className="text-gray-600">?</span>
                       {formatOrderDateTime(selectedOrder.created_at).time}
                     </p>
                   </div>
@@ -583,7 +589,7 @@ export default function AdminOrders() {
                   )}
                 </div>
 
-                <StatusTimeline status={selectedOrder.status} />
+                <OrderFulfillmentProgress status={selectedOrder.status} variant="admin" />
 
                 {/* Customer, shipping & payment */}
                 <div className="grid sm:grid-cols-2 gap-3">
@@ -654,11 +660,11 @@ export default function AdminOrders() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white truncate">{item.product?.name || 'Product'}</p>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              रु {Number(item.price).toLocaleString('en-IN')} × {item.quantity}
+                              ?? {Number(item.price).toLocaleString('en-IN')} ?- {item.quantity}
                             </p>
                           </div>
                           <p className="text-sm font-semibold text-white shrink-0">
-                            रु {lineTotal.toLocaleString('en-IN')}
+                            ?? {lineTotal.toLocaleString('en-IN')}
                           </p>
                         </div>
                       );
@@ -673,18 +679,31 @@ export default function AdminOrders() {
                 </div>
 
                 {/* Summary */}
+                {(() => {
+                  const totals = getReceiptTotals(selectedOrder);
+                  return (
                 <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 space-y-2">
                   <div className="flex items-center justify-between text-sm text-gray-400">
                     <span>Subtotal ({selectedOrder.items?.length || 0} items)</span>
-                    <span>रु {orderItemsSubtotal(selectedOrder.items || []).toLocaleString('en-IN')}</span>
+                    <span>?? {totals.subtotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <span>Shipping</span>
+                    <span>{totals.shipping === 0 ? 'Free' : `?? ${totals.shipping.toLocaleString('en-IN')}`}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <span>Tax ({totals.taxRate}%)</span>
+                    <span>?? {totals.tax.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-violet-500/20">
                     <span className="text-sm font-medium text-white">Order total</span>
                     <span className="text-lg font-semibold text-violet-300">
-                      रु {Number(selectedOrder.total).toLocaleString('en-IN')}
+                      ?? {totals.total.toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
+                  );
+                })()}
               </div>
 
               {/* Footer */}

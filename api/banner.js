@@ -13,6 +13,7 @@ export default async function handler(req, res) {
     const col = db.collection('banner_config');
 
     if (req.method === 'GET') {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       const doc = await col.findOne({ _id: BANNER_ID });
       if (!doc) return res.status(200).json(null);
       const { _id, ...rest } = doc;
@@ -22,8 +23,12 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       const body = req.body || {};
       delete body._id;
-      await col.updateOne({ _id: BANNER_ID }, { $set: body }, { upsert: true });
-      return res.status(200).json({ ok: true });
+      const payload = { ...body, updatedAt: new Date().toISOString() };
+      await col.updateOne({ _id: BANNER_ID }, { $set: payload }, { upsert: true });
+      const saved = await col.findOne({ _id: BANNER_ID });
+      if (!saved) return res.status(200).json({ ok: true, updatedAt: payload.updatedAt });
+      const { _id, ...rest } = saved;
+      return res.status(200).json(rest);
     }
 
     res.status(405).json({ error: 'Method not allowed' });

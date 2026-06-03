@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, CreditCard, Banknote, Clock, Wallet, LogIn, UserPlus } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import { useStoreSettings } from '../lib/useStoreSettings';
@@ -10,6 +10,7 @@ import { cartHeaders } from '../lib/session';
 import { useAuth } from '../contexts/AuthContext';
 import { resolveProductPrice } from '../lib/pricing';
 import { apiFetch } from '../lib/apiUrl';
+import { displayOrderId } from '../lib/orderId';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   'Cash on Delivery': <Banknote className="w-5 h-5 text-gray-600" />,
@@ -23,12 +24,12 @@ const FUNCTIONAL_METHODS = new Set(['Cash on Delivery']);
 
 export default function Checkout() {
   const { cart, clearCart, setCart } = useStore();
-  const navigate = useNavigate();
   const settings = useStoreSettings();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [cartLoading, setCartLoading] = useState(true);
   const [success, setSuccess] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<{ id: number; order_uid?: string } | null>(null);
   const [orderError, setOrderError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
   const [formData, setFormData] = useState({
@@ -110,6 +111,10 @@ export default function Checkout() {
             quantity: item.quantity,
             price: resolveProductPrice(item.product, settings),
           })),
+          subtotal,
+          shipping_amount: shipping,
+          tax_amount: tax,
+          tax_rate: settings?.taxRate ?? 13,
           total,
           payment_method: paymentMethod,
         }),
@@ -120,10 +125,12 @@ export default function Checkout() {
         throw new Error(data.error || 'Order could not be placed');
       }
 
+      const order = await res.json();
+      setPlacedOrder({ id: order.id, order_uid: order.order_uid });
+
       await apiFetch('/api/cart', { method: 'DELETE', headers: cartHeaders(), body: JSON.stringify({ clear_all: true }) });
       clearCart();
       setSuccess(true);
-      setTimeout(() => navigate('/'), 3000);
     } catch (err) {
       setOrderError(err instanceof Error ? err.message : 'Checkout failed');
     } finally {
@@ -202,13 +209,26 @@ export default function Checkout() {
             <CheckCircle className="w-8 h-8 text-white" />
           </motion.div>
           <h2 className="text-3xl font-serif font-medium text-gray-900 mt-8">Order Confirmed</h2>
+          {placedOrder && (
+            <p className="text-sm text-gray-700 mt-4">
+              Order ID:{' '}
+              <span className="font-mono font-semibold text-gray-900">{displayOrderId(placedOrder)}</span>
+            </p>
+          )}
           <p className="text-gray-500 mt-3">Thank you for your purchase.</p>
           <p className="text-sm text-gray-400 mt-2">You will pay upon delivery.</p>
-          <Link to="/">
-            <button className="mt-8 px-8 py-3 bg-gray-900 text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-[#c9a962] transition-colors">
-              Continue Shopping
-            </button>
-          </Link>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/orders">
+              <button className="px-8 py-3 bg-[#c9a962] text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-[#b8984f] transition-colors">
+                View My Orders
+              </button>
+            </Link>
+            <Link to="/">
+              <button className="px-8 py-3 bg-gray-900 text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-gray-800 transition-colors">
+                Continue Shopping
+              </button>
+            </Link>
+          </div>
         </motion.div>
       </div>
     );
@@ -252,7 +272,7 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* Payment Method — dynamically from settings */}
+              {/* Payment Method - dynamically from settings */}
               <div>
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-5">Payment Method</h3>
                 <div className="space-y-3">

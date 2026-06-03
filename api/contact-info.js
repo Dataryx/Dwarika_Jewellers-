@@ -5,7 +5,7 @@ const INFO_ID = 'contact_info';
 const DEFAULT_INFO = {
   heroSubtitle: 'Get in Touch',
   heroTitle: 'Contact Us',
-  heroDescription: "We'd love to hear from you. Whether you have a question about our collections, custom orders, or anything else — our team is ready to help.",
+  heroDescription: "We'd love to hear from you. Whether you have a question about our collections, custom orders, or anything else - our team is ready to help.",
   storeHeading: 'Visit Our Store',
   storeDescription: 'Come experience our collections in person. Our team will be happy to guide you through our finest pieces.',
   address: 'Dwarika Jewellers\nKathmandu, Nepal',

@@ -298,7 +298,7 @@ export default function AdminContact() {
                         <div className="grid sm:grid-cols-3 gap-3 text-xs">
                           <div><span className="text-gray-500">Name:</span> <span className="text-white ml-1">{msg.name}</span></div>
                           <div><span className="text-gray-500">Email:</span> <span className="text-white ml-1">{msg.email}</span></div>
-                          <div><span className="text-gray-500">Phone:</span> <span className="text-white ml-1">{msg.phone || '—'}</span></div>
+                          <div><span className="text-gray-500">Phone:</span> <span className="text-white ml-1">{msg.phone || '-'}</span></div>
                         </div>
                         {msg.subject && (
                           <div className="text-xs"><span className="text-gray-500">Subject:</span> <span className="text-violet-500 ml-1 font-medium">{msg.subject}</span></div>

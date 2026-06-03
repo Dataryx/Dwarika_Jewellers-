@@ -1,10 +1,10 @@
 import { getMongoDb } from './_mongo.js';
+import { validatePasswordStrength } from '../shared/passwordPolicy.mjs';
+import { normalizeEmail, validateEmailAddress } from '../shared/emailValidation.mjs';
+import { createResetToken, resetExpiresAt } from './_customerAuth.js';
+import { sendPasswordResetEmail } from './_customerAuthEmail.js';
 
 const MASTER_EMAIL = 'admin@dwarika.com';
-
-function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase();
-}
 
 function isMasterUser(user) {
   if (!user) return false;
@@ -127,6 +127,15 @@ async function requireCaller(admins, req) {
   return { caller };
 }
 
+async function getStoreName(db) {
+  const settingsDoc = await db.collection('settings').findOne({ _id: 'store_settings' });
+  return settingsDoc?.storeName || 'Dwarika';
+}
+
+function resolveAdminOrigin(body) {
+  return String(body.origin || process.env.VITE_ADMIN_URL || '').replace(/\/$/, '');
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -141,20 +150,105 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const body = parseRequestBody(req);
 
+      if (body.action === 'forgot-password') {
+        const emailCheck = validateEmailAddress(body.email);
+        if (!emailCheck.ok) {
+          return res.status(400).json({ error: emailCheck.error });
+        }
+
+        const admin = await findAdminByEmail(admins, emailCheck.normalized);
+        if (!admin) {
+          return res.status(404).json({
+            error: 'No admin account is registered with this email address.',
+          });
+        }
+
+        const resetToken = createResetToken();
+        await admins.updateOne(
+          { _id: admin._id },
+          { $set: { reset_token: resetToken, reset_expires: resetExpiresAt() } }
+        );
+
+        const origin = resolveAdminOrigin(body);
+        const resetUrl = origin
+          ? `${origin}/reset-password?token=${encodeURIComponent(resetToken)}`
+          : `/reset-password?token=${encodeURIComponent(resetToken)}`;
+        const storeName = await getStoreName(db);
+
+        try {
+          await sendPasswordResetEmail({
+            to: admin.email,
+            name: admin.name,
+            resetUrl,
+            storeName: `${storeName} Admin`,
+          });
+        } catch (emailErr) {
+          console.error('Admin password reset email failed:', emailErr);
+          return res.status(503).json({
+            error:
+              'Could not send reset email. Configure SMTP in the admin panel, then try again.',
+          });
+        }
+
+        return res.status(200).json({
+          ok: true,
+          message: 'A password reset link has been sent to your admin email.',
+        });
+      }
+
+      if (body.action === 'reset-password') {
+        const token = String(body.token || '').trim();
+        const password = String(body.password || '');
+        if (!token) return res.status(400).json({ error: 'Reset token is required' });
+
+        const resetPasswordCheck = validatePasswordStrength(password);
+        if (!resetPasswordCheck.ok) {
+          return res.status(400).json({ error: resetPasswordCheck.error });
+        }
+
+        const admin = await admins.findOne({
+          reset_token: token,
+          reset_expires: { $gt: new Date() },
+        });
+        if (!admin) {
+          return res.status(400).json({
+            error: 'Invalid or expired reset link. Request a new one from the admin login page.',
+          });
+        }
+
+        await admins.updateOne(
+          { _id: admin._id },
+          {
+            $set: { password, updated_at: new Date() },
+            $unset: { reset_token: '', reset_expires: '' },
+          }
+        );
+
+        return res.status(200).json({
+          ok: true,
+          message: 'Password updated. You can sign in to the admin panel now.',
+        });
+      }
+
       if (isCreateAdminRequest(body)) {
         const auth = await requireCaller(admins, req);
         if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
         const { name, email, password, phone } = body;
-        const newEmail = normalizeEmail(email);
-        if (!name?.trim() || !newEmail || !password) {
+        const emailCheck = validateEmailAddress(email);
+        if (!emailCheck.ok) {
+          return res.status(400).json({ error: emailCheck.error });
+        }
+        const newEmail = emailCheck.normalized;
+        if (!name?.trim() || !password) {
           return res.status(400).json({ error: 'Name, email, and password are required' });
         }
         if (!String(phone || '').trim()) {
           return res.status(400).json({ error: 'Phone number is required' });
         }
-        if (password.length < 6) {
-          return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        const createPasswordCheck = validatePasswordStrength(password);
+        if (!createPasswordCheck.ok) {
+          return res.status(400).json({ error: createPasswordCheck.error });
         }
         if (newEmail === MASTER_EMAIL) {
           return res.status(400).json({ error: 'This email is reserved for the master admin' });
@@ -179,7 +273,11 @@ export default async function handler(req, res) {
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password required' });
       }
-      const normalizedLogin = normalizeEmail(email);
+      const loginEmailCheck = validateEmailAddress(email);
+      if (!loginEmailCheck.ok) {
+        return res.status(400).json({ error: loginEmailCheck.error });
+      }
+      const normalizedLogin = loginEmailCheck.normalized;
       const user = await findAdminByEmail(admins, normalizedLogin);
       if (!user || user.password !== password) {
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -249,7 +347,13 @@ export default async function handler(req, res) {
 
         const updates = {};
         if (body.name?.trim()) updates.name = body.name.trim();
-        if (body.password) updates.password = body.password;
+        if (body.password) {
+          const updatePasswordCheck = validatePasswordStrength(body.password);
+          if (!updatePasswordCheck.ok) {
+            return res.status(400).json({ error: updatePasswordCheck.error });
+          }
+          updates.password = body.password;
+        }
         applyProfileUpdates(updates, body);
         if (Object.keys(updates).length === 0) {
           return res.status(400).json({ error: 'Nothing to update' });
@@ -263,6 +367,10 @@ export default async function handler(req, res) {
       const { email, currentPassword, newPassword } = body;
       if (!email || !currentPassword || !newPassword) {
         return res.status(400).json({ error: 'email, currentPassword, and newPassword required' });
+      }
+      const changePasswordCheck = validatePasswordStrength(newPassword);
+      if (!changePasswordCheck.ok) {
+        return res.status(400).json({ error: changePasswordCheck.error });
       }
       const normalized = normalizeEmail(email);
       const user = await findAdminByEmail(admins, normalized);

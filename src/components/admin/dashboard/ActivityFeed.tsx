@@ -22,7 +22,7 @@ interface ActivityFeedProps {
 
 export default function ActivityFeed({ activities }: ActivityFeedProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 6;
   const totalPages = Math.max(1, Math.ceil(activities.length / itemsPerPage));
   const visibleActivities = activities.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 

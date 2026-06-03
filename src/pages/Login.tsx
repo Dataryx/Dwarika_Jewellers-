@@ -2,9 +2,18 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { signInWithGoogle } from '../lib/googleAuth';
+import {
+  loginCustomer,
+  registerCustomer,
+  requestPasswordReset,
+  resendVerificationEmail,
+  CustomerAuthError,
+} from '../lib/customerAuth';
+import { PASSWORD_REQUIREMENTS_HINT, validatePasswordStrength } from '../lib/passwordPolicy';
+import { validateEmailAddress } from '../lib/emailValidation';
+
+const DWARIKA_LOGO = '/DWARIKA%20MAIN%20LOGO.png';
 
 type AuthMode = 'login' | 'signup' | 'forgot-password';
 
@@ -26,13 +35,15 @@ export default function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  
-  const { user } = useAuth();
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as any)?.from?.pathname || '/';
+  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
 
   useEffect(() => {
     if (user) {
@@ -40,19 +51,17 @@ export default function Login() {
     }
   }, [user, navigate, from]);
 
-  const validateEmail = (email: string): string | undefined => {
-    if (!email.trim()) return 'Email is required';
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+  const validateEmail = (value: string): string | undefined => {
+    const check = validateEmailAddress(value);
+    if (!check.ok) return check.error || 'Please enter a valid email address';
     return undefined;
   };
 
-  const validatePassword = (password: string): string | undefined => {
-    if (!password) return 'Password is required';
-    if (password.length < 6) return 'Password must be at least 6 characters';
+  const validatePassword = (value: string): string | undefined => {
+    if (!value) return 'Password is required';
     if (mode === 'signup') {
-      if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
-      if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+      const check = validatePasswordStrength(value);
+      if (!check.ok) return check.error || 'Password does not meet requirements';
     }
     return undefined;
   };
@@ -73,21 +82,18 @@ export default function Login() {
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-    
     const emailError = validateEmail(email);
     if (emailError) newErrors.email = emailError;
-    
-    const passwordError = validatePassword(password);
-    if (passwordError) newErrors.password = passwordError;
-    
+    if (mode !== 'forgot-password') {
+      const passwordError = validatePassword(password);
+      if (passwordError) newErrors.password = passwordError;
+    }
     if (mode === 'signup') {
       const confirmError = validateConfirmPassword(confirmPassword, password);
       if (confirmError) newErrors.confirmPassword = confirmError;
-      
       const nameError = validateFullName(fullName);
       if (nameError) newErrors.fullName = nameError;
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -96,79 +102,77 @@ export default function Login() {
     e.preventDefault();
     setErrors({});
     setSuccessMessage('');
-    
+    setPendingVerificationEmail('');
     if (!validateForm()) return;
-    
     setLoading(true);
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim().toLowerCase(),
-          password,
-        });
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            setErrors({ general: 'Invalid email or password. Please try again.' });
-          } else if (error.message.includes('Email not confirmed')) {
-            setErrors({ general: 'Please check your email and confirm your account.' });
-          } else {
-            setErrors({ general: error.message });
-          }
-          return;
-        }
+        await loginCustomer(email, password);
+        await refreshUser();
         navigate(from, { replace: true });
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const data = await registerCustomer({
           email: email.trim().toLowerCase(),
           password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-            },
-          },
+          name: fullName.trim(),
         });
-        if (error) {
-          if (error.message.includes('already registered')) {
-            setErrors({ email: 'This email is already registered. Please log in.' });
-          } else {
-            setErrors({ general: error.message });
-          }
-          return;
-        }
-        setSuccessMessage('Account created! Please check your email to confirm your account.');
+        setSuccessMessage(
+          data.message ||
+            'Account created! Check your email and click the confirmation link before signing in.'
+        );
+        setPendingVerificationEmail(email.trim().toLowerCase());
         setMode('login');
+        setPassword('');
+        setConfirmPassword('');
       } else if (mode === 'forgot-password') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
-        if (error) {
-          setErrors({ general: error.message });
-          return;
-        }
-        setSuccessMessage('Password reset link sent! Check your email.');
+        const data = await requestPasswordReset(email.trim().toLowerCase());
+        setSuccessMessage(data.message || 'If an account exists for that email, a reset link has been sent.');
       }
     } catch (err) {
-      setErrors({ general: 'An unexpected error occurred. Please try again.' });
+      if (err instanceof CustomerAuthError && err.code === 'EMAIL_NOT_VERIFIED') {
+        setPendingVerificationEmail(err.email || email.trim().toLowerCase());
+      }
+      setErrors({
+        general: err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    signInWithGoogle('Dwarika');
+  const handleResendVerification = async () => {
+    const target = pendingVerificationEmail || email.trim().toLowerCase();
+    if (!target) {
+      setErrors({ general: 'Enter your email address first.' });
+      return;
+    }
+    setResending(true);
+    setErrors({});
+    try {
+      const data = await resendVerificationEmail(target);
+      setSuccessMessage(
+        data.message || 'If an unverified account exists for that email, a new confirmation link has been sent.'
+      );
+      setPendingVerificationEmail(target);
+    } catch (err) {
+      setErrors({
+        general: err instanceof Error ? err.message : 'Could not resend confirmation email.',
+      });
+    } finally {
+      setResending(false);
+    }
   };
 
   const clearFieldError = (field: keyof FormErrors) => {
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#faf9f7] flex">
-      {/* Left Side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative">
+    <div className="min-h-[calc(100dvh-4rem)] sm:min-h-[calc(100dvh-5rem)] bg-[#faf9f7] flex">
+      <div className="hidden lg:block lg:w-1/2 relative min-h-[inherit]">
         <img
           src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1200"
           alt="Luxury Jewelry"
@@ -182,24 +186,21 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start min-h-[inherit] pt-1 sm:pt-2 pb-6 px-6 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
-          {/* Logo */}
-          <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-            <svg className="w-8 h-8 text-[#c9a962]" viewBox="0 0 100 100">
-              <polygon points="50,10 85,35 75,85 25,85 15,35" fill="currentColor" stroke="#a88b4a" strokeWidth="2"/>
-              <polygon points="50,10 85,35 50,45 15,35" fill="#fbbf24" opacity="0.6"/>
-            </svg>
-            <span className="text-xl font-serif font-medium tracking-[0.2em] text-gray-900">DWARIKA</span>
+          <Link to="/" className="flex items-center justify-center mb-3">
+            <img
+              src={DWARIKA_LOGO}
+              alt="Dwarika"
+              className="h-40 sm:h-44 lg:h-48 w-auto max-w-full object-contain"
+            />
           </Link>
 
-          {/* Title */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-5">
             <h1 className="text-2xl font-serif font-medium text-gray-900">
               {mode === 'login' && 'Welcome Back'}
               {mode === 'signup' && 'Create Account'}
@@ -208,41 +209,57 @@ export default function Login() {
             <p className="mt-2 text-sm text-gray-500">
               {mode === 'login' && 'Sign in to your account'}
               {mode === 'signup' && 'Join us for exclusive access'}
-              {mode === 'forgot-password' && 'We\'ll send you a reset link'}
+              {mode === 'forgot-password' && "We'll email you a reset link"}
             </p>
           </div>
 
-          {/* Success Message */}
           <AnimatePresence>
             {successMessage && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"
+                className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg space-y-3"
               >
                 <p className="text-sm text-green-700">{successMessage}</p>
+                {pendingVerificationEmail && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resending}
+                    className="text-sm font-medium text-[#c9a962] hover:text-[#a88b4a] disabled:opacity-50"
+                  >
+                    {resending ? 'Sending…' : 'Resend confirmation email'}
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* General Error */}
           <AnimatePresence>
             {errors.general && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
+                className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg space-y-3"
               >
                 <p className="text-sm text-red-700">{errors.general}</p>
+                {pendingVerificationEmail && (
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={resending}
+                    className="text-sm font-medium text-[#c9a962] hover:text-[#a88b4a] disabled:opacity-50"
+                  >
+                    {resending ? 'Sending…' : 'Resend confirmation email'}
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Full Name - Signup only */}
+          <form onSubmit={handleSubmit} className="space-y-4">
             <AnimatePresence>
               {mode === 'signup' && (
                 <motion.div
@@ -259,21 +276,21 @@ export default function Login() {
                     <input
                       type="text"
                       value={fullName}
-                      onChange={(e) => { setFullName(e.target.value); clearFieldError('fullName'); }}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        clearFieldError('fullName');
+                      }}
                       placeholder="Enter your full name"
                       className={`w-full pl-12 pr-4 py-3 bg-white border ${
                         errors.fullName ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#c9a962]'
                       } text-sm focus:outline-none transition-colors`}
                     />
                   </div>
-                  {errors.fullName && (
-                    <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>
-                  )}
+                  {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Email */}
             <div className="space-y-1">
               <label className="block text-xs font-medium tracking-[0.1em] uppercase text-gray-700">
                 Email Address
@@ -283,19 +300,19 @@ export default function Login() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearFieldError('email');
+                  }}
                   placeholder="Enter your email"
                   className={`w-full pl-12 pr-4 py-3 bg-white border ${
                     errors.email ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#c9a962]'
                   } text-sm focus:outline-none transition-colors`}
                 />
               </div>
-              {errors.email && (
-                <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-              )}
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
             </div>
 
-            {/* Password */}
             <AnimatePresence>
               {mode !== 'forgot-password' && (
                 <motion.div
@@ -312,7 +329,10 @@ export default function Login() {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        clearFieldError('password');
+                      }}
                       placeholder="Enter your password"
                       className={`w-full pl-12 pr-12 py-3 bg-white border ${
                         errors.password ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#c9a962]'
@@ -326,19 +346,14 @@ export default function Login() {
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  {errors.password && (
-                    <p className="text-xs text-red-500 mt-1">{errors.password}</p>
-                  )}
+                  {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                   {mode === 'signup' && !errors.password && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Must be 6+ characters with uppercase and number
-                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Confirm Password - Signup only */}
             <AnimatePresence>
               {mode === 'signup' && (
                 <motion.div
@@ -355,7 +370,10 @@ export default function Login() {
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError('confirmPassword'); }}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        clearFieldError('confirmPassword');
+                      }}
                       placeholder="Confirm your password"
                       className={`w-full pl-12 pr-12 py-3 bg-white border ${
                         errors.confirmPassword ? 'border-red-300 focus:border-red-500' : 'border-gray-200 focus:border-[#c9a962]'
@@ -376,12 +394,15 @@ export default function Login() {
               )}
             </AnimatePresence>
 
-            {/* Forgot Password Link */}
             {mode === 'login' && (
               <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => { setMode('forgot-password'); setErrors({}); setSuccessMessage(''); }}
+                  onClick={() => {
+                    setMode('forgot-password');
+                    setErrors({});
+                    setSuccessMessage('');
+                  }}
                   className="text-xs text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Forgot password?
@@ -389,11 +410,10 @@ export default function Login() {
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gray-900 text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-[#c9a962] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gray-900 text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-[#c9a962] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -408,24 +428,17 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-4 bg-[#faf9f7] text-gray-400 uppercase tracking-wider">or</span>
-            </div>
-          </div>
-
-          {/* Mode Switch */}
-          <p className="mt-8 text-center text-sm text-gray-500">
+          <p className="mt-5 text-center text-sm text-gray-500">
             {mode === 'login' && (
               <>
                 Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => { setMode('signup'); setErrors({}); setSuccessMessage(''); }}
+                  onClick={() => {
+                    setMode('signup');
+                    setErrors({});
+                    setSuccessMessage('');
+                  }}
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign up
@@ -437,7 +450,11 @@ export default function Login() {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => { setMode('login'); setErrors({}); setSuccessMessage(''); }}
+                  onClick={() => {
+                    setMode('login');
+                    setErrors({});
+                    setSuccessMessage('');
+                  }}
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign in
@@ -449,7 +466,11 @@ export default function Login() {
                 Remember your password?{' '}
                 <button
                   type="button"
-                  onClick={() => { setMode('login'); setErrors({}); setSuccessMessage(''); }}
+                  onClick={() => {
+                    setMode('login');
+                    setErrors({});
+                    setSuccessMessage('');
+                  }}
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign in

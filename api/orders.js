@@ -1,5 +1,6 @@
 import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
 import crypto from 'node:crypto';
+import { validateEmailAddress } from '../shared/emailValidation.mjs';
 
 function generateOrderUid() {
   const d = new Date();
@@ -72,10 +73,18 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { customer_name, customer_email, items, total, payment_method, shipping_address } = req.body || {};
-      const headerEmail = String(req.headers['x-user-email'] || '').trim().toLowerCase();
-      const normalizedBodyEmail = String(customer_email || '').trim().toLowerCase();
-      const orderEmail = headerEmail || normalizedBodyEmail;
+      const { customer_name, customer_email, items, total, payment_method, shipping_address, subtotal, shipping_amount, tax_amount, tax_rate } = req.body || {};
+      const headerEmail = String(req.headers['x-user-email'] || '').trim();
+      const normalizedBodyEmail = String(customer_email || '').trim();
+      let orderEmail = headerEmail || normalizedBodyEmail;
+
+      if (orderEmail) {
+        const emailCheck = validateEmailAddress(orderEmail);
+        if (!emailCheck.ok) {
+          return res.status(400).json({ error: emailCheck.error });
+        }
+        orderEmail = emailCheck.normalized;
+      }
 
       const ship = shipping_address && typeof shipping_address === 'object' ? shipping_address : {};
       const normalizedShipping = {
@@ -88,11 +97,19 @@ export default async function handler(req, res) {
 
       const orderId = await nextSeq('order');
       const order_uid = await allocateOrderUid(ordersCol);
+      const lineSubtotal = (items || []).reduce(
+        (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+        0
+      );
       const orderDoc = {
         _id: orderId,
         order_uid,
         customer_name,
         customer_email: orderEmail,
+        subtotal: Number(subtotal) || lineSubtotal,
+        shipping_amount: Number(shipping_amount) || 0,
+        tax_amount: Number(tax_amount) || 0,
+        tax_rate: Number(tax_rate) || null,
         total: Number(total) || 0,
         payment_method: payment_method || 'Cash on Delivery',
         shipping_address: normalizedShipping,

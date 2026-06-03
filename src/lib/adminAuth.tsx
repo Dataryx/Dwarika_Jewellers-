@@ -36,7 +36,7 @@ const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 const SESSION_AUTH_KEY = 'adminAuth';
 const SESSION_EMAIL_KEY = 'adminEmail';
 
-/** Display name comes only from MongoDB `name` — never the email local-part. */
+/** Display name comes only from MongoDB `name` - never the email local-part. */
 export function resolveAdminDisplayName(
   apiName: string | undefined | null,
   adminEmail: string | null

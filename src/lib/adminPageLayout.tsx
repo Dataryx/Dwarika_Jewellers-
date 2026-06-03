@@ -7,7 +7,7 @@ export function useAdminSidebarOpen(): boolean {
   return ctx.sidebarOpen;
 }
 
-/** Same shell as Products / Orders — always full width of the main panel. */
+/** Same shell as Products / Orders - always full width of the main panel. */
 export function adminPageShellClass() {
   return 'space-y-6 w-full min-w-0';
 }

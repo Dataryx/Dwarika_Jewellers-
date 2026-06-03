@@ -10,7 +10,7 @@ type ImageUploadFieldProps = {
   /** Softer limit for homepage banner (localStorage) */
   variant?: 'default' | 'banner';
   hint?: string;
-  /** When false, hide the URL field — upload from computer only */
+  /** When false, hide the URL field - upload from computer only */
   allowUrl?: boolean;
 };
 

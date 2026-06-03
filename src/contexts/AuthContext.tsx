@@ -1,54 +1,39 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { onAuthStateChange, AuthUser } from '../lib/auth';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { CustomerUser } from '../lib/customerAuth';
+import { fetchCurrentCustomer, logoutCustomer } from '../lib/customerAuth';
 import { resetSession } from '../lib/session';
 import { useStore } from '../lib/store';
 import { showNotification } from '../components/Notification';
-import { apiFetch } from '../lib/apiUrl';
 
 interface AuthContextType {
-  user: SupabaseUser | null;
+  user: CustomerUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function syncCustomer(user: SupabaseUser) {
-  apiFetch('/api/customers', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: user.email,
-      name: user.user_metadata?.full_name || '',
-      auth_provider: user.app_metadata?.provider || 'email',
-    }),
-  }).catch(() => {});
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<CustomerUser | null>(null);
   const [loading, setLoading] = useState(true);
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const signingOutRef = useRef(false);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const current = await fetchCurrentCustomer();
+      setUser(current);
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      setLoading(false);
-      if (u) syncCustomer(u);
-    });
-
-    const { data: { subscription } } = onAuthStateChange((user) => {
-      setUser(user);
-      setLoading(false);
-      if (user) syncCustomer(user);
-    });
-
-    return () => subscription.unsubscribe();
+    fetchCurrentCustomer()
+      .then(setUser)
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSignOut = useCallback(async () => {
@@ -56,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signingOutRef.current = true;
     resetSession();
     useStore.getState().clearCart();
-    await supabase.auth.signOut();
+    await logoutCustomer();
     setUser(null);
     signingOutRef.current = false;
   }, []);
@@ -74,8 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutes
-    const WARNING_MS = 9 * 60 * 1000; // 1 minute before logout
+    const INACTIVITY_MS = 10 * 60 * 1000;
+    const WARNING_MS = 9 * 60 * 1000;
     const events: Array<keyof WindowEventMap> = [
       'mousemove',
       'mousedown',
@@ -123,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, handleSignOut]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut: handleSignOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut: handleSignOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

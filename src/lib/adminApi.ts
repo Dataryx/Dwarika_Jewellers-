@@ -7,7 +7,7 @@ export function getAdminEmail(): string | null {
   return raw ? raw.trim().toLowerCase() : null;
 }
 
-/** Role is stored in MongoDB — use useAdminAuth().isMaster in React. */
+/** Role is stored in MongoDB - use useAdminAuth().isMaster in React. */
 export function isMasterAdmin(): boolean {
   return getAdminEmail() === MASTER_EMAIL;
 }

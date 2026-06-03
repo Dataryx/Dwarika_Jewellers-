@@ -12,6 +12,7 @@ import { Link, NavLink, useLocation, useNavigate, Outlet, useOutletContext } fro
 import { useAdminAuth } from '../../lib/adminAuth';
 import { storefrontUrl } from '../../lib/storefrontUrl';
 import Notification from '../../components/Notification';
+import BrandWordmark from '../../components/BrandWordmark';
 
 import StatCard from '../../components/admin/dashboard/StatCard';
 import RevenueChart from '../../components/admin/dashboard/RevenueChart';
@@ -98,6 +99,69 @@ function computeMonthOverMonth(orders: any[], products: any[]) {
   };
 }
 
+const ADMIN_READ_NOTIFICATIONS_KEY = 'adminReadNotificationIds';
+
+function loadReadNotificationIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(ADMIN_READ_NOTIFICATIONS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveReadNotificationIds(ids: Set<string>) {
+  localStorage.setItem(ADMIN_READ_NOTIFICATIONS_KEY, JSON.stringify([...ids]));
+}
+
+type AdminNotificationItem = {
+  id: string;
+  title: string;
+  detail: string;
+  icon: 'stock' | 'order';
+};
+
+function buildAdminNotifications(
+  orders: any[],
+  products: any[],
+  prefs: { newOrders: boolean; lowStock: boolean }
+): AdminNotificationItem[] {
+  const items: AdminNotificationItem[] = [];
+
+  if (prefs.lowStock) {
+    products
+      .filter((p) => Number(p.stock) <= 5)
+      .slice(0, 5)
+      .forEach((p) => {
+        items.push({
+          id: `stock-${p.id}`,
+          title: Number(p.stock) === 0 ? 'Out of stock' : 'Low stock',
+          detail: `${p.name} - ${p.stock} left`,
+          icon: 'stock',
+        });
+      });
+  }
+
+  if (prefs.newOrders) {
+    orders
+      .filter((o) => o.status === 'pending')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5)
+      .forEach((o) => {
+        items.push({
+          id: `order-${o.id}`,
+          title: `New order ${displayOrderId(o)}`,
+          detail: `${o.customer_name} - रु ${Number(o.total).toLocaleString('en-IN')}`,
+          icon: 'order',
+        });
+      });
+  }
+
+  return items;
+}
+
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -128,11 +192,11 @@ export default function AdminLayout() {
   const [statChanges, setStatChanges] = useState({ products: 0, orders: 0, revenue: 0, pending: 0 });
   const [products, setProducts] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
-  const [storeName, setStoreName] = useState('Dwarika');
   const [notificationPrefs, setNotificationPrefs] = useState({
     newOrders: true,
     lowStock: true,
   });
+  const [readNotificationIds, setReadNotificationIds] = useState(loadReadNotificationIds);
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
@@ -183,7 +247,6 @@ export default function AdminLayout() {
 
         setProducts(prods);
         setOrders(ords);
-        if (settings?.storeName) setStoreName(settings.storeName);
         setStats({
           totalProducts: prods.length,
           totalOrders: ords.length,
@@ -230,6 +293,16 @@ export default function AdminLayout() {
   const showSidebar = isDesktop ? sidebarOpen : mobileMenuOpen;
   const layoutSidebarOpen = isDesktop && sidebarOpen;
 
+  const notificationItems = buildAdminNotifications(orders, products, notificationPrefs);
+  const unreadNotifications = notificationItems.filter((item) => !readNotificationIds.has(item.id));
+
+  const markAllNotificationsRead = () => {
+    const next = new Set(readNotificationIds);
+    notificationItems.forEach((item) => next.add(item.id));
+    setReadNotificationIds(next);
+    saveReadNotificationIds(next);
+  };
+
   return (
     <div className="flex h-screen bg-gray-950 overflow-hidden">
       {/* Sidebar */}
@@ -243,13 +316,10 @@ export default function AdminLayout() {
             className="fixed lg:relative z-50 w-64 h-screen bg-gray-900 border-r border-gray-800 flex flex-col shrink-0"
           >
             {/* Logo */}
-            <div className="h-16 flex items-center justify-between px-6 border-b border-gray-800">
-              <Link to="/" className="flex items-center gap-3 group min-w-0" onClick={() => setMobileMenuOpen(false)}>
-                <img src="/favicon.svg?v=2" alt="Dwarika logo" className="w-9 h-9 shrink-0" />
-                <div className="min-w-0">
-                  <h1 className="text-lg font-bold text-white leading-tight truncate">{storeName}</h1>
-                  <p className="text-xs text-gray-500">Admin Panel</p>
-                </div>
+            <div className="h-20 flex items-center justify-between px-5 border-b border-gray-800">
+              <Link to="/" className="flex items-center gap-2.5 group min-w-0" onClick={() => setMobileMenuOpen(false)}>
+                <img src="/favicon.svg?v=5" alt="Dwarika" className="w-10 h-10 shrink-0" />
+                <BrandWordmark size="nav" />
               </Link>
               <button
                 type="button"
@@ -325,7 +395,7 @@ export default function AdminLayout() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Search — desktop */}
+            {/* Search - desktop */}
             <div className="relative hidden md:block" ref={searchRef}>
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
@@ -375,7 +445,7 @@ export default function AdminLayout() {
                         className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
                       >
                         <ShoppingCart className="w-3.5 h-3.5 text-gray-500" />
-                        Order {displayOrderId(o)} — {o.customer_name}
+                        Order {displayOrderId(o)} - {o.customer_name}
                       </button>
                     ))}
                   {products.filter((p: any) => p.name?.toLowerCase().includes(topSearch.toLowerCase())).length === 0 &&
@@ -402,55 +472,48 @@ export default function AdminLayout() {
                 className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
               >
                 <Bell className="w-4 h-4" />
-                {(notificationPrefs.newOrders && orders.filter((o: any) => o.status === 'pending').length > 0) ||
-                  (notificationPrefs.lowStock && products.filter((p: any) => Number(p.stock) <= 5).length > 0) ? (
+                {unreadNotifications.length > 0 ? (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
                 ) : null}
               </button>
               {showNotifications && (
                 <div className="absolute right-0 top-full mt-1 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
-                  <div className="px-4 py-3 border-b border-gray-700">
+                  <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-white">Notifications</p>
+                    {unreadNotifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={markAllNotificationsRead}
+                        className="text-xs font-medium text-violet-400 hover:text-violet-300 whitespace-nowrap"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
                   </div>
-                  {(!notificationPrefs.newOrders || orders.filter((o: any) => o.status === 'pending').length === 0) &&
-                   (!notificationPrefs.lowStock || products.filter((p: any) => Number(p.stock) <= 5).length === 0) ? (
+                  {unreadNotifications.length === 0 ? (
                     <div className="px-4 py-6 text-center text-sm text-gray-500">All caught up!</div>
                   ) : (
                     <div className="py-1">
-                      {notificationPrefs.lowStock &&
-                        products
-                        .filter((p: any) => Number(p.stock) <= 5)
-                        .slice(0, 5)
-                        .map((p: any) => (
-                          <div key={`stock-${p.id}`} className="px-4 py-3 hover:bg-gray-700/30 flex items-start gap-3">
+                      {unreadNotifications.map((item) => (
+                        <div key={item.id} className="px-4 py-3 hover:bg-gray-700/30 flex items-start gap-3">
+                          {item.icon === 'stock' ? (
                             <AlertTriangle className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-white">{Number(p.stock) === 0 ? 'Out of stock' : 'Low stock'}</p>
-                              <p className="text-xs text-gray-500">{p.name} — {p.stock} left</p>
-                            </div>
-                          </div>
-                        ))}
-                      {notificationPrefs.newOrders &&
-                        orders
-                        .filter((o: any) => o.status === 'pending')
-                        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                        .slice(0, 5)
-                        .map((o: any) => (
-                          <div key={`order-${o.id}`} className="px-4 py-3 hover:bg-gray-700/30 flex items-start gap-3">
+                          ) : (
                             <ShoppingCart className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-white">New order {displayOrderId(o)}</p>
-                              <p className="text-xs text-gray-500">{o.customer_name} — रु {Number(o.total).toLocaleString('en-IN')}</p>
-                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm text-white">{item.title}</p>
+                            <p className="text-xs text-gray-500">{item.detail}</p>
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Profile menu — same pattern as storefront user panel */}
+            {/* Profile menu - same pattern as storefront user panel */}
             <div className="relative" ref={profileMenuRef}>
               <motion.button
                 type="button"
@@ -553,7 +616,7 @@ export default function AdminLayout() {
         </main>
       </div>
 
-      {/* Mobile overlay — tap outside to close */}
+      {/* Mobile overlay - tap outside to close */}
       {!isDesktop && mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -572,7 +635,7 @@ export default function AdminLayout() {
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard — the /admin index route
+// Dashboard - the /admin index route
 // ---------------------------------------------------------------------------
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -653,14 +716,14 @@ function buildTopProducts(products: any[], orders: any[]) {
     .slice(0, 5);
 }
 
-function buildActivityFeed(orders: any[]) {
+function buildActivityFeed(orders: any[], products: any[] = []) {
   const activities: { action: string; detail: string; time: string; type: string }[] = [];
 
   const sorted = [...orders].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  sorted.slice(0, 6).forEach((o: any) => {
+  sorted.forEach((o: any) => {
     const mins = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000);
     let time: string;
     if (mins < 1) time = 'just now';
@@ -675,14 +738,47 @@ function buildActivityFeed(orders: any[]) {
     } else if (o.status === 'delivered') {
       activities.push({ action: 'Order delivered', detail: `${displayOrderId(o)} to ${o.customer_name}`, time, type: 'order' });
     } else {
-      activities.push({ action: `Order ${o.status}`, detail: `${displayOrderId(o)} — रु ${Number(o.total || 0).toLocaleString('en-IN')}`, time, type: 'order' });
+      activities.push({ action: `Order ${o.status}`, detail: `${displayOrderId(o)} - रु ${Number(o.total || 0).toLocaleString('en-IN')}`, time, type: 'order' });
     }
   });
 
+  products
+    .filter((p) => Number(p.stock ?? 0) <= 5)
+    .slice(0, 3)
+    .forEach((p) => {
+      activities.push({
+        action: 'Low stock alert',
+        detail: `${p.name} - ${Number(p.stock ?? 0)} left`,
+        time: 'recent',
+        type: 'alert',
+      });
+    });
+
+  const summaryEntries = [
+    { action: 'Catalog overview', detail: `${products.length} products in your store`, time: 'today', type: 'product' },
+    { action: 'Orders overview', detail: `${orders.length} total orders recorded`, time: 'today', type: 'order' },
+    { action: 'Revenue snapshot', detail: `रु ${orders.reduce((sum, o) => sum + Number(o.total || 0), 0).toLocaleString('en-IN')} lifetime revenue`, time: 'today', type: 'order' },
+    { action: 'Store dashboard', detail: 'Review performance and recent activity here', time: 'today', type: 'product' },
+  ];
+
+  for (const entry of summaryEntries) {
+    if (activities.length >= 6) break;
+    if (!activities.some((a) => a.action === entry.action)) {
+      activities.push(entry);
+    }
+  }
+
   if (activities.length === 0) {
-    activities.push(
-      { action: 'Store launched', detail: 'Welcome to the admin panel', time: 'now', type: 'product' },
-    );
+    activities.push({ action: 'Store launched', detail: 'Welcome to the admin panel', time: 'now', type: 'product' });
+  }
+
+  while (activities.length < 6) {
+    activities.push({
+      action: 'Getting started',
+      detail: 'Add products and receive orders to see more activity',
+      time: 'today',
+      type: 'product',
+    });
   }
 
   return activities;
@@ -759,7 +855,7 @@ export function AdminDashboard() {
     .slice()
     .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 6);
-  const activityFeed = buildActivityFeed(orders);
+  const activityFeed = buildActivityFeed(orders, products);
 
   const handleExport = () => {
     exportDashboardWorkbook({
