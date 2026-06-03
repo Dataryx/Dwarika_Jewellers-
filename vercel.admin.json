@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run build:admin",
+  "installCommand": "npm ci",
   "outputDirectory": "dist-admin",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
