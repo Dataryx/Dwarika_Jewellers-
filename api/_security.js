@@ -92,7 +92,12 @@ export function apiError(res, err, status = 500) {
     ) {
       code = 503;
       message = err.message;
+    } else if (/ADMIN_AUTH_SECRET|CUSTOMER_AUTH_SECRET is required/i.test(err.message)) {
+      code = 503;
+      message = err.message;
     } else if (!isProduction()) {
+      message = err.message;
+    } else if (err.message && err.message.length < 200) {
       message = err.message;
     }
   }

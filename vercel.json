@@ -2,6 +2,12 @@
   "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "outputDirectory": "dist",
+  "functions": {
+    "api/handler.js": {
+      "includeFiles": "shared/**",
+      "maxDuration": 30
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

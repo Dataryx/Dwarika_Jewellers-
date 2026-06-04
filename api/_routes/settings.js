@@ -1,6 +1,4 @@
 import { getMongoDb } from '../_mongo.js';
-import { clearLivePricesCache } from './live-prices.js';
-import { requireAdmin } from '../_adminAuth.js';
 import { handleApiRequest, apiError } from '../_security.js';
 
 const SETTINGS_ID = 'store_settings';
@@ -91,6 +89,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+      const { requireAdmin } = await import('../_adminAuth.js');
       const auth = await requireAdmin(req, adminsCol);
       if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
@@ -111,6 +110,7 @@ export default async function handler(req, res) {
       }
       await col.updateOne({ _id: SETTINGS_ID }, { $set: body }, { upsert: true });
       if (pricingFields.some((k) => k in body)) {
+        const { clearLivePricesCache } = await import('./live-prices.js');
         clearLivePricesCache();
       }
       return res.status(200).json({ ok: true });

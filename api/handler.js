@@ -1,38 +1,23 @@
 import { apiError } from './_security.js';
-import adminAuth from './_routes/admin-auth.js';
-import about from './_routes/about.js';
-import banner from './_routes/banner.js';
-import cart from './_routes/cart.js';
-import categories from './_routes/categories.js';
-import contactInfo from './_routes/contact-info.js';
-import contact from './_routes/contact.js';
-import health from './_routes/health.js';
-import customerAuth from './_routes/customer-auth.js';
-import customers from './_routes/customers.js';
-import livePrices from './_routes/live-prices.js';
-import newsletter from './_routes/newsletter.js';
-import orders from './_routes/orders.js';
-import products from './_routes/products.js';
-import settings from './_routes/settings.js';
-import smtp from './_routes/smtp.js';
 
-const ROUTES = {
-  'admin-auth': adminAuth,
-  about,
-  banner,
-  cart,
-  categories,
-  'contact-info': contactInfo,
-  contact,
-  health,
-  'customer-auth': customerAuth,
-  customers,
-  'live-prices': livePrices,
-  newsletter,
-  orders,
-  products,
-  settings,
-  smtp,
+/** Lazy-load routes so cold start only loads the handler for the current request. */
+const ROUTE_LOADERS = {
+  'admin-auth': () => import('./_routes/admin-auth.js'),
+  about: () => import('./_routes/about.js'),
+  banner: () => import('./_routes/banner.js'),
+  cart: () => import('./_routes/cart.js'),
+  categories: () => import('./_routes/categories.js'),
+  'contact-info': () => import('./_routes/contact-info.js'),
+  contact: () => import('./_routes/contact.js'),
+  health: () => import('./_routes/health.js'),
+  'customer-auth': () => import('./_routes/customer-auth.js'),
+  customers: () => import('./_routes/customers.js'),
+  'live-prices': () => import('./_routes/live-prices.js'),
+  newsletter: () => import('./_routes/newsletter.js'),
+  orders: () => import('./_routes/orders.js'),
+  products: () => import('./_routes/products.js'),
+  settings: () => import('./_routes/settings.js'),
+  smtp: () => import('./_routes/smtp.js'),
 };
 
 /** Resolve API segment from Vercel rewrite, catch-all query, or request URL. */
@@ -55,11 +40,26 @@ function resolveRouteName(req) {
   return parts[0] || null;
 }
 
-function buildForwardedReq(req, routeName) {
+function buildForwardedReq(req) {
   const query = { ...(req.query || {}) };
   delete query.route;
   delete query.path;
   return { ...req, query };
+}
+
+/** Lightweight diagnostic — no Mongo, no shared imports. */
+function handlePing(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  return res.status(200).json({
+    ok: true,
+    mongoUriConfigured: Boolean(process.env.MONGODB_URI?.trim()),
+    database: process.env.MONGODB_DB_NAME?.trim() || 'lumiere',
+    vercelEnv: process.env.VERCEL_ENV || null,
+    nodeEnv: process.env.NODE_ENV || null,
+  });
 }
 
 export default async function handler(req, res) {
@@ -69,13 +69,31 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    const routeHandler = ROUTES[name];
-    if (!routeHandler) {
+    if (name === 'ping') {
+      return handlePing(req, res);
+    }
+
+    const loadRoute = ROUTE_LOADERS[name];
+    if (!loadRoute) {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    return await routeHandler(buildForwardedReq(req, name), res);
+    const mod = await loadRoute();
+    const routeHandler = mod.default;
+    if (typeof routeHandler !== 'function') {
+      return res.status(500).json({ error: 'Invalid route handler' });
+    }
+
+    return await routeHandler(buildForwardedReq(req), res);
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/Cannot find module|ERR_MODULE_NOT_FOUND/i.test(message)) {
+      console.error('Route module load failed:', err);
+      return res.status(500).json({
+        error: 'Server module load failed. Redeploy after pulling latest master.',
+        detail: message,
+      });
+    }
     return apiError(res, err);
   }
 }

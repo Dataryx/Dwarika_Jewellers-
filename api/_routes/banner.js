@@ -1,5 +1,4 @@
 import { getMongoDb } from '../_mongo.js';
-import { requireAdmin } from '../_adminAuth.js';
 import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
 
 const BANNER_ID = 'homepage_banner';
@@ -28,6 +27,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+      const { requireAdmin } = await import('../_adminAuth.js');
       const auth = await requireAdmin(req, adminsCol);
       if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
