@@ -15,11 +15,12 @@ export default function Collections() {
 
   useEffect(() => {
     apiFetch('/api/categories')
-      .then((r) => r.json())
-      .then((data: { slug: string; name: string }[]) => {
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok || !Array.isArray(data)) return;
         setCategories([
           { id: 'all', label: 'All' },
-          ...data.map((c) => ({ id: c.slug, label: c.name })),
+          ...data.map((c: { slug: string; name: string }) => ({ id: c.slug, label: c.name })),
         ]);
       })
       .catch(() => {});
@@ -33,7 +34,12 @@ export default function Collections() {
           ? `/api/products?category=${selectedCategory}`
           : '/api/products';
         const res = await apiFetch(url);
-        let data = await res.json();
+        const raw = await res.json();
+        if (!res.ok || !Array.isArray(raw)) {
+          setProducts([]);
+          return;
+        }
+        let data = raw;
         
         if (sortBy === 'price-low') {
           data = data.sort((a: Product, b: Product) => a.price - b.price);

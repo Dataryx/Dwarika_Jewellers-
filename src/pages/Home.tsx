@@ -92,14 +92,18 @@ export default function Home() {
 
   useEffect(() => {
     apiFetch('/api/products?featured=true')
-      .then((r) => r.json())
-      .then(setFeaturedProducts)
+      .then(async (r) => {
+        const data = await r.json();
+        if (r.ok && Array.isArray(data)) setFeaturedProducts(data);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
 
     apiFetch('/api/categories')
-      .then((r) => r.json())
-      .then((data) => { if (data.length > 0) setCategories(data); })
+      .then(async (r) => {
+        const data = await r.json();
+        if (r.ok && Array.isArray(data) && data.length > 0) setCategories(data);
+      })
       .catch(() => {});
 
     apiFetch('/api/about')

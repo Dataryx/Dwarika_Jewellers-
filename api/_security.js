@@ -76,12 +76,21 @@ export function handleApiRequest(req, res, opts = {}) {
 
 export function apiError(res, err, status = 500) {
   console.error(err);
-  const message = isProduction()
-    ? 'Internal server error'
-    : err instanceof Error
-      ? err.message
-      : String(err || 'Internal server error');
-  return res.status(status).json({ error: message });
+  let code = status;
+  let message = 'Internal server error';
+
+  if (err instanceof Error) {
+    if (/MONGODB_URI is not set/i.test(err.message)) {
+      code = 503;
+      message = isProduction()
+        ? 'Database is not configured. Add MONGODB_URI in Vercel environment variables.'
+        : err.message;
+    } else if (!isProduction()) {
+      message = err.message;
+    }
+  }
+
+  return res.status(code).json({ error: message });
 }
 
 /** Reject javascript/data URLs; allow https/http and same-site relative paths. */

@@ -1,3 +1,4 @@
+import { apiError } from './_security.js';
 import adminAuth from './_routes/admin-auth.js';
 import about from './_routes/about.js';
 import banner from './_routes/banner.js';
@@ -52,16 +53,27 @@ function resolveRouteName(req) {
   return parts[0] || null;
 }
 
+function buildForwardedReq(req, routeName) {
+  const query = { ...(req.query || {}) };
+  delete query.route;
+  delete query.path;
+  return { ...req, query };
+}
+
 export default async function handler(req, res) {
-  const name = resolveRouteName(req);
-  if (!name) {
-    return res.status(404).json({ error: 'Not found' });
-  }
+  try {
+    const name = resolveRouteName(req);
+    if (!name) {
+      return res.status(404).json({ error: 'Not found' });
+    }
 
-  const routeHandler = ROUTES[name];
-  if (!routeHandler) {
-    return res.status(404).json({ error: 'Not found' });
-  }
+    const routeHandler = ROUTES[name];
+    if (!routeHandler) {
+      return res.status(404).json({ error: 'Not found' });
+    }
 
-  return routeHandler(req, res);
+    return await routeHandler(buildForwardedReq(req, name), res);
+  } catch (err) {
+    return apiError(res, err);
+  }
 }

@@ -36,6 +36,10 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       try {
         const res = await apiFetch('/api/products');
         const data = await res.json();
+        if (!res.ok || !Array.isArray(data)) {
+          setResults([]);
+          return;
+        }
         const filtered = data.filter((p: Product) =>
           p.name.toLowerCase().includes(query.toLowerCase()) ||
           p.category.toLowerCase().includes(query.toLowerCase()) ||

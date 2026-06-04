@@ -21,7 +21,11 @@ export async function getMongoDb() {
     throw new Error('MONGODB_URI is not set (add it to .env / Vercel env)');
   }
   if (!client) {
-    client = new MongoClient(uri, mongoOptionsFromEnv());
+    client = new MongoClient(uri, {
+      ...mongoOptionsFromEnv(),
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 15000,
+    });
     await client.connect();
   }
   const name = process.env.MONGODB_DB_NAME || 'lumiere';
