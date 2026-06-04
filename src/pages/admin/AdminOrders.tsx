@@ -13,6 +13,7 @@ import {
   ORDER_PERIOD_LABELS,
   type OrderPeriodFilter,
 } from '../../lib/orderPeriodFilter';
+import { formatPrice } from '../../lib/currency';
 
 interface OrderItem {
   id: number;
@@ -258,13 +259,13 @@ export default function AdminOrders() {
           <p className="text-sm text-gray-500 mt-1">
             {loading
               ? 'Manage and track customer orders'
-              : `${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'} ? ${PAGE_SIZE} per page`}
+              : `${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'} · ${PAGE_SIZE} per page`}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
           <div className="bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-2.5 min-h-[42px] w-full sm:min-w-[200px] sm:w-auto flex items-center justify-between gap-3">
             <p className="text-sm text-gray-400">Filtered Revenue</p>
-            <p className="text-sm font-semibold text-white">?? {totalRevenue.toLocaleString('en-IN')}</p>
+            <p className="text-sm font-semibold text-white">{formatPrice(totalRevenue)}</p>
           </div>
           <button
             onClick={() => {
@@ -440,7 +441,7 @@ export default function AdminOrders() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-400">{order.items?.length || 0}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-white text-right">?? {Number(order.total).toLocaleString('en-IN')}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-white text-right">{formatPrice(Number(order.total))}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -660,11 +661,11 @@ export default function AdminOrders() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white truncate">{item.product?.name || 'Product'}</p>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              ?? {Number(item.price).toLocaleString('en-IN')} ?- {item.quantity}
+                              {formatPrice(Number(item.price))} × {item.quantity}
                             </p>
                           </div>
                           <p className="text-sm font-semibold text-white shrink-0">
-                            ?? {lineTotal.toLocaleString('en-IN')}
+                            {formatPrice(lineTotal)}
                           </p>
                         </div>
                       );
@@ -685,20 +686,20 @@ export default function AdminOrders() {
                 <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 space-y-2">
                   <div className="flex items-center justify-between text-sm text-gray-400">
                     <span>Subtotal ({selectedOrder.items?.length || 0} items)</span>
-                    <span>?? {totals.subtotal.toLocaleString('en-IN')}</span>
+                    <span>{formatPrice(totals.subtotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-gray-400">
                     <span>Shipping</span>
-                    <span>{totals.shipping === 0 ? 'Free' : `?? ${totals.shipping.toLocaleString('en-IN')}`}</span>
+                    <span>{totals.shipping === 0 ? 'Free' : formatPrice(totals.shipping)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-gray-400">
                     <span>Tax ({totals.taxRate}%)</span>
-                    <span>?? {totals.tax.toLocaleString('en-IN')}</span>
+                    <span>{formatPrice(totals.tax)}</span>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-violet-500/20">
                     <span className="text-sm font-medium text-white">Order total</span>
                     <span className="text-lg font-semibold text-violet-300">
-                      ?? {totals.total.toLocaleString('en-IN')}
+                      {formatPrice(totals.total)}
                     </span>
                   </div>
                 </div>
