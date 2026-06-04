@@ -1,4 +1,6 @@
 import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
+import { requireAdmin } from './_adminAuth.js';
+import { handleApiRequest, apiError, sanitizeMediaUrl } from './_security.js';
 
 const ABOUT_ID = 'about_page';
 
@@ -22,16 +24,47 @@ const DEFAULT_ABOUT = {
   ],
 };
 
+const CONTENT_KEYS = new Set([
+  'heroImage',
+  'heroSubtitle',
+  'heroTitle',
+  'storySubtitle',
+  'storyTitle',
+  'storyParagraphs',
+  'storyImage',
+  'values',
+]);
+
+function pickAboutContent(body) {
+  const out = {};
+  for (const key of CONTENT_KEYS) {
+    if (key in body) out[key] = body[key];
+  }
+  for (const urlKey of ['heroImage', 'storyImage']) {
+    if (out[urlKey] !== undefined) {
+      const url = sanitizeMediaUrl(out[urlKey]);
+      if (out[urlKey] && url === null) return { error: `Invalid ${urlKey}` };
+      out[urlKey] = url ?? '';
+    }
+  }
+  return { data: out };
+}
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (
+    handleApiRequest(req, res, {
+      methods: 'GET, PUT, OPTIONS',
+      headers: 'Content-Type, Authorization',
+    })
+  ) {
+    return;
+  }
 
   try {
     const db = await getMongoDb();
     const content = db.collection('site_content');
     const teamCol = db.collection('team_members');
+    const adminsCol = db.collection('admin_users');
 
     if (req.method === 'GET') {
       const doc = await content.findOne({ _id: ABOUT_ID });
@@ -47,13 +80,27 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+      const auth = await requireAdmin(req, adminsCol);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
       const { section } = req.query;
 
       if (section === 'team-add') {
         const { name, role, image } = req.body || {};
         if (!name) return res.status(400).json({ error: 'Name is required' });
+        const imageUrl = sanitizeMediaUrl(image);
+        if (image && imageUrl === null) {
+          return res.status(400).json({ error: 'Invalid image URL' });
+        }
         const id = await nextSeq('team_member');
-        const doc = { _id: id, name, role: role || '', image: image || '', sort_order: id, created_at: new Date() };
+        const doc = {
+          _id: id,
+          name: String(name).slice(0, 120),
+          role: String(role || '').slice(0, 120),
+          image: imageUrl ?? '',
+          sort_order: id,
+          created_at: new Date(),
+        };
         await teamCol.insertOne(doc);
         return res.status(201).json(docToJson(doc));
       }
@@ -63,9 +110,15 @@ export default async function handler(req, res) {
         if (!Number.isFinite(memberId)) return res.status(400).json({ error: 'Invalid member ID' });
         const { name, role, image } = req.body;
         const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (role !== undefined) updates.role = role;
-        if (image !== undefined) updates.image = image;
+        if (name !== undefined) updates.name = String(name).slice(0, 120);
+        if (role !== undefined) updates.role = String(role).slice(0, 120);
+        if (image !== undefined) {
+          const imageUrl = sanitizeMediaUrl(image);
+          if (image && imageUrl === null) {
+            return res.status(400).json({ error: 'Invalid image URL' });
+          }
+          updates.image = imageUrl ?? '';
+        }
         await teamCol.updateOne({ _id: memberId }, { $set: updates });
         const updated = await teamCol.findOne({ _id: memberId });
         return res.status(200).json(docToJson(updated));
@@ -78,17 +131,17 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // Default: save page content (hero, story, values)
-      const body = req.body || {};
-      delete body._id;
-      delete body.team;
-      await content.updateOne({ _id: ABOUT_ID }, { $set: body }, { upsert: true });
+      const picked = pickAboutContent(req.body || {});
+      if (picked.error) return res.status(400).json({ error: picked.error });
+      if (Object.keys(picked.data).length === 0) {
+        return res.status(400).json({ error: 'No valid content to update' });
+      }
+      await content.updateOne({ _id: ABOUT_ID }, { $set: picked.data }, { upsert: true });
       return res.status(200).json({ ok: true });
     }
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error('About API error:', err);
-    res.status(500).json({ error: err.message });
+    return apiError(res, err);
   }
 }

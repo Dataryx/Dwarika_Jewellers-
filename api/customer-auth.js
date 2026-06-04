@@ -16,6 +16,8 @@ import {
 import { sendVerificationEmail, sendPasswordResetEmail } from './_customerAuthEmail.js';
 import { validatePasswordStrength } from '../shared/passwordPolicy.mjs';
 import { validateEmailAddress } from '../shared/emailValidation.mjs';
+import { handleApiRequest, apiError } from './_security.js';
+import { rateLimitRequest } from './_rateLimit.js';
 
 function parseBody(req) {
   let body = req.body;
@@ -83,13 +85,14 @@ async function sendCustomerVerificationEmail(db, doc, origin) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Customer-Token, X-User-Email'
-  );
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (
+    handleApiRequest(req, res, {
+      methods: 'GET, POST, PUT, OPTIONS',
+      headers: 'Content-Type, Authorization, X-Customer-Token, X-User-Email',
+    })
+  ) {
+    return;
+  }
 
   try {
     const db = await getMongoDb();
@@ -120,6 +123,15 @@ export default async function handler(req, res) {
         const emailCheck = validateEmailAddress(body.email);
         if (!emailCheck.ok) return res.status(400).json({ error: emailCheck.error });
         const email = emailCheck.normalized;
+
+        const rl = await rateLimitRequest(db, req, 'customer-register', email, {
+          max: 5,
+          windowMs: 60 * 60 * 1000,
+        });
+        if (!rl.ok) {
+          return res.status(429).json({ error: 'Too many registration attempts. Try again later.' });
+        }
+
         const password = String(body.password || '');
         const name = String(body.name || body.fullName || '').trim();
 
@@ -173,6 +185,15 @@ export default async function handler(req, res) {
         const emailCheck = validateEmailAddress(body.email);
         if (!emailCheck.ok) return res.status(400).json({ error: emailCheck.error });
         const email = emailCheck.normalized;
+
+        const rl = await rateLimitRequest(db, req, 'customer-login', email, {
+          max: 10,
+          windowMs: 15 * 60 * 1000,
+        });
+        if (!rl.ok) {
+          return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+        }
+
         const password = String(body.password || '');
         if (!password) {
           return res.status(400).json({ error: 'Email and password are required' });
@@ -255,6 +276,14 @@ export default async function handler(req, res) {
         const emailCheck = validateEmailAddress(body.email);
         if (!emailCheck.ok) return res.status(400).json({ error: emailCheck.error });
         const email = emailCheck.normalized;
+
+        const rl = await rateLimitRequest(db, req, 'customer-forgot', email, {
+          max: 5,
+          windowMs: 15 * 60 * 1000,
+        });
+        if (!rl.ok) {
+          return res.status(429).json({ error: 'Too many requests. Try again later.' });
+        }
 
         const doc = await findCustomer(col, email);
         if (doc?.password_hash) {
@@ -359,6 +388,6 @@ export default async function handler(req, res) {
     if (err.code === 'EMAIL_NOT_VERIFIED') {
       return res.status(403).json({ error: err.message, code: err.code });
     }
-    res.status(500).json({ error: err.message || 'Auth error' });
+    return apiError(res, err);
   }
 }

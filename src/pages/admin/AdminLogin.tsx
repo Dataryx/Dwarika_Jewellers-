@@ -137,11 +137,13 @@ export default function AdminLogin() {
           setError(data.error || 'Invalid credentials');
 
         } else {
-
-          setAdminSession(String(data.email || email).trim().toLowerCase());
-
+          const token = String(data.token || '');
+          if (!token) {
+            setError('Login succeeded but no session token was returned.');
+            return;
+          }
+          setAdminSession(String(data.email || email).trim().toLowerCase(), token);
           navigate('/');
-
         }
 
       } else {

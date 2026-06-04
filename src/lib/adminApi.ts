@@ -1,6 +1,16 @@
 import { apiUrl } from './apiUrl';
 
 const MASTER_EMAIL = 'admin@dwarika.com';
+const TOKEN_KEY = 'adminAuthToken';
+
+export function getAdminToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setAdminToken(token: string | null) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
 
 export function getAdminEmail(): string | null {
   const raw = localStorage.getItem('adminEmail');
@@ -13,10 +23,10 @@ export function isMasterAdmin(): boolean {
 }
 
 export function adminHeaders(extra?: Record<string, string>): Record<string, string> {
-  const email = getAdminEmail();
+  const token = getAdminToken();
   return {
     ...extra,
-    ...(email ? { 'X-Admin-Email': email } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
@@ -26,8 +36,8 @@ export function adminApiUrl(path: string): string {
 
 export function adminFetch(input: string, init?: RequestInit) {
   const headers = new Headers(init?.headers);
-  const email = getAdminEmail();
-  if (email) headers.set('X-Admin-Email', email);
+  const token = getAdminToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (init?.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }

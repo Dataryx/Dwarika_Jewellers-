@@ -1,25 +1,49 @@
-import { getMongoDb, docToJson } from './_mongo.js';
+import { getMongoDb } from './_mongo.js';
+import { requireAdmin } from './_adminAuth.js';
+import { handleApiRequest, apiError } from './_security.js';
+import { toPublicCustomer } from './_customerAuth.js';
+
+function toAdminCustomer(doc, stats = {}) {
+  const pub = toPublicCustomer(doc) || {};
+  return {
+    ...pub,
+    email: doc.email || doc._id,
+    total_spent: stats.total_spent || doc.total_spent || 0,
+    order_count: stats.order_count || doc.order_count || 0,
+    last_login: doc.last_login instanceof Date ? doc.last_login.toISOString() : doc.last_login,
+  };
+}
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Email');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (
+    handleApiRequest(req, res, {
+      methods: 'GET, POST, PUT, OPTIONS',
+      headers: 'Content-Type, Authorization',
+    })
+  ) {
+    return;
+  }
 
   try {
     const db = await getMongoDb();
     const col = db.collection('customers');
+    const adminsCol = db.collection('admin_users');
 
     if (req.method === 'GET') {
+      const auth = await requireAdmin(req, adminsCol);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
       const docs = await col.find({}).sort({ created_at: -1 }).toArray();
 
       const ordersCol = db.collection('orders');
       const pipeline = [
-        { $group: {
-          _id: { $toLower: '$customer_email' },
-          total_spent: { $sum: '$total' },
-          order_count: { $sum: 1 },
-        }},
+        {
+          $group: {
+            _id: { $toLower: '$customer_email' },
+            total_spent: { $sum: '$total' },
+            order_count: { $sum: 1 },
+          },
+        },
       ];
       const orderStats = await ordersCol.aggregate(pipeline).toArray();
       const statsMap = Object.fromEntries(
@@ -27,48 +51,15 @@ export default async function handler(req, res) {
       );
 
       const enriched = docs.map((d) => {
-        const json = docToJson(d);
-        const stats = statsMap[json.email] || {};
-        json.total_spent = stats.total_spent || d.total_spent || 0;
-        json.order_count = stats.order_count || d.order_count || 0;
-        return json;
+        const email = (d.email || d._id || '').toLowerCase();
+        return toAdminCustomer(d, statsMap[email] || {});
       });
 
       return res.status(200).json(enriched);
     }
 
-    if (req.method === 'POST') {
-      const { email, name, phone, auth_provider } = req.body || {};
-      if (!email) return res.status(400).json({ error: 'email is required' });
-
-      const normalizedEmail = email.trim().toLowerCase();
-      const existing = await col.findOne({ _id: normalizedEmail });
-
-      if (existing) {
-        const updates = {};
-        if (name && name !== existing.name) updates.name = name;
-        if (phone && phone !== existing.phone) updates.phone = phone;
-        updates.last_login = new Date();
-
-        await col.updateOne({ _id: normalizedEmail }, { $set: updates });
-        const updated = await col.findOne({ _id: normalizedEmail });
-        return res.status(200).json(docToJson(updated));
-      }
-
-      const doc = {
-        _id: normalizedEmail,
-        email: normalizedEmail,
-        name: name || '',
-        phone: phone || '',
-        auth_provider: auth_provider || 'email',
-        total_spent: 0,
-        order_count: 0,
-        created_at: new Date(),
-        last_login: new Date(),
-      };
-      await col.insertOne(doc);
-      return res.status(201).json(docToJson(doc));
-    }
+    const auth = await requireAdmin(req, adminsCol);
+    if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
     if (req.method === 'PUT') {
       const { email, name, phone } = req.body || {};
@@ -79,17 +70,16 @@ export default async function handler(req, res) {
       if (!existing) return res.status(404).json({ error: 'Customer not found' });
 
       const updates = {};
-      if (name !== undefined) updates.name = String(name).trim();
-      if (phone !== undefined) updates.phone = String(phone).trim();
+      if (name !== undefined) updates.name = String(name).trim().slice(0, 200);
+      if (phone !== undefined) updates.phone = String(phone).trim().slice(0, 32);
 
       await col.updateOne({ _id: targetEmail }, { $set: updates });
       const updated = await col.findOne({ _id: targetEmail });
-      return res.status(200).json(docToJson(updated));
+      return res.status(200).json(toAdminCustomer(updated));
     }
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error('Customers API error:', err);
-    res.status(500).json({ error: err.message });
+    return apiError(res, err);
   }
 }

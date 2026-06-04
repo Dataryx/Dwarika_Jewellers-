@@ -1,6 +1,12 @@
 import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
 import crypto from 'node:crypto';
 import { validateEmailAddress } from '../shared/emailValidation.mjs';
+import { resolveProductPrice, computeCheckoutTotals } from '../shared/pricing.mjs';
+import { getBearerToken, verifyCustomerToken, normalizeEmail } from './_customerAuth.js';
+import { requireAdmin } from './_adminAuth.js';
+import { handleApiRequest, apiError, ORDER_STATUSES } from './_security.js';
+
+const SETTINGS_ID = 'store_settings';
 
 function generateOrderUid() {
   const d = new Date();
@@ -29,11 +35,52 @@ async function ensureOrderUid(ordersCol, order) {
   return order_uid;
 }
 
+async function loadStoreSettings(db) {
+  const doc = await db.collection('settings').findOne({ _id: SETTINGS_ID });
+  return doc || {};
+}
+
+async function buildOrdersResponse(db, orderRows) {
+  const ordersCol = db.collection('orders');
+  const orderItemsCol = db.collection('order_items');
+  const productsCol = db.collection('products');
+
+  for (const order of orderRows) {
+    if (!order.order_uid) {
+      order.order_uid = await ensureOrderUid(ordersCol, order);
+    }
+  }
+
+  const orderIds = orderRows.map((o) => o._id);
+  const orderItems =
+    orderIds.length > 0
+      ? await orderItemsCol.find({ order_id: { $in: orderIds } }).toArray()
+      : [];
+  const productIds = [...new Set(orderItems.map((i) => i.product_id))].filter((x) => Number.isFinite(x));
+  const prodDocs =
+    productIds.length > 0 ? await productsCol.find({ _id: { $in: productIds } }).toArray() : [];
+  const productsMap = Object.fromEntries(prodDocs.map((p) => [p._id, docToJson(p)]));
+
+  return orderRows.map((order) => ({
+    ...docToJson(order),
+    items: orderItems
+      .filter((i) => i.order_id === order._id)
+      .map((i) => ({
+        ...docToJson(i),
+        product: productsMap[i.product_id] || null,
+      })),
+  }));
+}
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Email, X-Session-Id');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (
+    handleApiRequest(req, res, {
+      methods: 'GET, POST, PUT, DELETE, OPTIONS',
+      headers: 'Content-Type, Authorization, X-User-Email, X-Session-Id',
+    })
+  ) {
+    return;
+  }
 
   try {
     const db = await getMongoDb();
@@ -41,41 +88,35 @@ export default async function handler(req, res) {
     const orderItemsCol = db.collection('order_items');
     const productsCol = db.collection('products');
     const cartCol = db.collection('cart_items');
+    const adminsCol = db.collection('admin_users');
     const { id, email } = req.query;
 
     if (req.method === 'GET') {
-      const filter = email ? { customer_email: email.trim().toLowerCase() } : {};
-      const orderRows = await ordersCol.find(filter).sort({ created_at: -1 }).toArray();
-      for (const order of orderRows) {
-        if (!order.order_uid) {
-          order.order_uid = await ensureOrderUid(ordersCol, order);
+      if (email) {
+        const payload = verifyCustomerToken(getBearerToken(req));
+        const requested = normalizeEmail(String(email).trim());
+        if (!payload || payload.sub !== requested) {
+          return res.status(403).json({ error: 'Forbidden' });
         }
+        const orderRows = await ordersCol
+          .find({ customer_email: requested })
+          .sort({ created_at: -1 })
+          .toArray();
+        return res.status(200).json(await buildOrdersResponse(db, orderRows));
       }
-      const orderItems = await orderItemsCol.find({}).toArray();
-      const productIds = [...new Set(orderItems.map((i) => i.product_id))].filter((x) => Number.isFinite(x));
-      const prodDocs =
-        productIds.length > 0
-          ? await productsCol.find({ _id: { $in: productIds } }).toArray()
-          : [];
-      const productsMap = Object.fromEntries(prodDocs.map((p) => [p._id, docToJson(p)]));
 
-      const ordersWithItems = orderRows.map((order) => ({
-        ...docToJson(order),
-        items: orderItems
-          .filter((i) => i.order_id === order._id)
-          .map((i) => ({
-            ...docToJson(i),
-            product: productsMap[i.product_id] || null,
-          })),
-      }));
+      const auth = await requireAdmin(req, adminsCol);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
-      return res.status(200).json(ordersWithItems);
+      const orderRows = await ordersCol.find({}).sort({ created_at: -1 }).toArray();
+      return res.status(200).json(await buildOrdersResponse(db, orderRows));
     }
 
     if (req.method === 'POST') {
-      const { customer_name, customer_email, items, total, payment_method, shipping_address, subtotal, shipping_amount, tax_amount, tax_rate } = req.body || {};
+      const body = req.body || {};
+      const { customer_name, items, payment_method, shipping_address } = body;
       const headerEmail = String(req.headers['x-user-email'] || '').trim();
-      const normalizedBodyEmail = String(customer_email || '').trim();
+      const normalizedBodyEmail = String(body.customer_email || '').trim();
       let orderEmail = headerEmail || normalizedBodyEmail;
 
       if (orderEmail) {
@@ -86,57 +127,95 @@ export default async function handler(req, res) {
         orderEmail = emailCheck.normalized;
       }
 
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Order must include at least one item' });
+      }
+
+      const settings = await loadStoreSettings(db);
+      const paymentMethods = settings.paymentMethods || {};
+      const method = String(payment_method || 'Cash on Delivery');
+      if (paymentMethods[method] === false) {
+        return res.status(400).json({ error: 'Selected payment method is not available' });
+      }
+
+      const productIds = [...new Set(items.map((i) => Number(i.product_id)).filter(Number.isFinite))];
+      const prodDocs = await productsCol.find({ _id: { $in: productIds } }).toArray();
+      const prodMap = Object.fromEntries(prodDocs.map((p) => [p._id, p]));
+
+      const validatedLines = [];
+      for (const item of items) {
+        const pid = Number(item.product_id);
+        const qty = Math.max(1, Math.min(99, Number(item.quantity) || 1));
+        const prod = prodMap[pid];
+        if (!prod) {
+          return res.status(400).json({ error: `Invalid product ${pid}` });
+        }
+        const stock = Number(prod.stock) || 0;
+        if (stock > 0 && qty > stock) {
+          return res.status(400).json({ error: `Insufficient stock for ${prod.name}` });
+        }
+        const unitPrice = resolveProductPrice(prod, settings);
+        validatedLines.push({ product_id: pid, quantity: qty, unitPrice, product: prod });
+      }
+
+      const totals = computeCheckoutTotals(
+        validatedLines.map((l) => ({ unitPrice: l.unitPrice, quantity: l.quantity })),
+        settings
+      );
+
       const ship = shipping_address && typeof shipping_address === 'object' ? shipping_address : {};
       const normalizedShipping = {
-        phone: String(ship.phone || req.body?.phone || '').trim(),
-        address: String(ship.address || req.body?.address || '').trim(),
-        city: String(ship.city || req.body?.city || '').trim(),
-        state: String(ship.state || req.body?.state || '').trim(),
-        zip: String(ship.zip || req.body?.zip || '').trim(),
+        phone: String(ship.phone || body.phone || '').trim().slice(0, 32),
+        address: String(ship.address || body.address || '').trim().slice(0, 500),
+        city: String(ship.city || body.city || '').trim().slice(0, 120),
+        state: String(ship.state || body.state || '').trim().slice(0, 120),
+        zip: String(ship.zip || body.zip || '').trim().slice(0, 20),
       };
 
       const orderId = await nextSeq('order');
       const order_uid = await allocateOrderUid(ordersCol);
-      const lineSubtotal = (items || []).reduce(
-        (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
-        0
-      );
       const orderDoc = {
         _id: orderId,
         order_uid,
-        customer_name,
+        customer_name: String(customer_name || '').trim().slice(0, 200),
         customer_email: orderEmail,
-        subtotal: Number(subtotal) || lineSubtotal,
-        shipping_amount: Number(shipping_amount) || 0,
-        tax_amount: Number(tax_amount) || 0,
-        tax_rate: Number(tax_rate) || null,
-        total: Number(total) || 0,
-        payment_method: payment_method || 'Cash on Delivery',
+        subtotal: totals.subtotal,
+        shipping_amount: totals.shipping_amount,
+        tax_amount: totals.tax_amount,
+        tax_rate: totals.tax_rate,
+        total: totals.total,
+        payment_method: method,
         shipping_address: normalizedShipping,
         status: 'pending',
         created_at: new Date(),
       };
       await ordersCol.insertOne(orderDoc);
 
-      for (const item of items || []) {
+      for (const line of validatedLines) {
         const lineId = await nextSeq('order_item');
         await orderItemsCol.insertOne({
           _id: lineId,
           order_id: orderId,
-          product_id: Number(item.product_id),
-          quantity: Number(item.quantity) || 1,
-          price: Number(item.price) || 0,
+          product_id: line.product_id,
+          quantity: line.quantity,
+          price: line.unitPrice,
         });
+        if (Number(line.product.stock) > 0) {
+          await productsCol.updateOne(
+            { _id: line.product_id, stock: { $gte: line.quantity } },
+            { $inc: { stock: -line.quantity } }
+          );
+        }
       }
 
-      const sessionId = String(req.headers['x-session-id'] || '').trim();
+      const sessionId = String(req.headers['x-session-id'] || '').trim().slice(0, 128);
       if (sessionId) {
         await cartCol.deleteMany({ session_id: sessionId });
       }
 
       if (orderEmail) {
         const custCol = db.collection('customers');
-        const customerSet = { name: customer_name || '' };
+        const customerSet = { name: orderDoc.customer_name || '' };
         if (normalizedShipping.phone) customerSet.phone = normalizedShipping.phone;
 
         await custCol.updateOne(
@@ -155,25 +234,14 @@ export default async function handler(req, res) {
         );
       }
 
-      const settingsDoc = await db.collection('settings').findOne({ _id: 'store_settings' });
-      const storeName = settingsDoc?.storeName || 'Dwarika';
-      const productIds = (items || []).map((i) => Number(i.product_id)).filter(Number.isFinite);
-      const prodDocs =
-        productIds.length > 0
-          ? await productsCol.find({ _id: { $in: productIds } }).toArray()
-          : [];
-      const prodMap = Object.fromEntries(prodDocs.map((p) => [p._id, p]));
-      const enrichedItems = (items || []).map((item, idx) => {
-        const pid = Number(item.product_id);
-        const prod = prodMap[pid];
-        return {
-          id: idx + 1,
-          product_id: pid,
-          quantity: Number(item.quantity) || 1,
-          price: Number(item.price) || 0,
-          product: prod ? { name: prod.name, image_url: prod.image_url } : null,
-        };
-      });
+      const storeName = settings.storeName || 'Dwarika';
+      const enrichedItems = validatedLines.map((line, idx) => ({
+        id: idx + 1,
+        product_id: line.product_id,
+        quantity: line.quantity,
+        price: line.unitPrice,
+        product: { name: line.product.name, image_url: line.product.image_url },
+      }));
 
       try {
         const { sendOrderReceiptEmail } = await import('./_orderReceiptEmail.js');
@@ -192,9 +260,15 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+      const auth = await requireAdmin(req, adminsCol);
+      if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
       const orderId = Number(id || req.body?.id);
       const { status } = req.body || {};
       if (!Number.isFinite(orderId)) return res.status(400).json({ error: 'Order ID required' });
+      if (!status || !ORDER_STATUSES.has(String(status))) {
+        return res.status(400).json({ error: 'Invalid order status' });
+      }
 
       const existing = await ordersCol.findOne({ _id: orderId });
       if (!existing) return res.status(404).json({ error: 'Not found' });
@@ -206,7 +280,7 @@ export default async function handler(req, res) {
 
       const r = await ordersCol.findOneAndUpdate(
         { _id: orderId },
-        { $set: { status } },
+        { $set: { status: String(status) } },
         { returnDocument: 'after' }
       );
       const doc = r.value ?? r;
@@ -216,7 +290,6 @@ export default async function handler(req, res) {
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error('API error:', err);
-    res.status(500).json({ error: err.message });
+    return apiError(res, err);
   }
 }

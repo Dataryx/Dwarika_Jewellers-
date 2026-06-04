@@ -75,7 +75,15 @@ Set these on the **store** project for **Production** (and Preview if you use pr
 
 | Variable | Description |
 |----------|-------------|
-| `CUSTOMER_AUTH_SECRET` | Long random string for signing customer login tokens (optional in dev; **required in production**) |
+| `CUSTOMER_AUTH_SECRET` | Long random string for signing customer login tokens (**required in production**) |
+| `ADMIN_AUTH_SECRET` | Separate long random string for admin API tokens (**required in production**) |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins, e.g. `https://your-store.com,https://admin.your-store.com` |
+
+**Bootstrap (first deploy only)**
+
+| Variable | Description |
+|----------|-------------|
+| `ADMIN_BOOTSTRAP_PASSWORD` | Creates master admin (`admin@dwarika.com`) if no admin exists. Remove after first login. |
 
 **Optional**
 

@@ -5,11 +5,12 @@ const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 function authSecret() {
-  return (
-    process.env.CUSTOMER_AUTH_SECRET?.trim() ||
-    process.env.MONGODB_URI?.trim() ||
-    'dwarika-dev-customer-auth-secret'
-  );
+  const secret = process.env.CUSTOMER_AUTH_SECRET?.trim();
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
+    throw new Error('CUSTOMER_AUTH_SECRET is required in production');
+  }
+  return 'dwarika-dev-customer-auth-secret';
 }
 
 import { normalizeEmail } from '../shared/emailValidation.mjs';

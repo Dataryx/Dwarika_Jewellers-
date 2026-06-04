@@ -9,7 +9,7 @@ import { printMongoAuthHint } from './mongo-auth-hint.mjs';
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB_NAME || 'lumiere';
 
-const COLLECTIONS = ['products', 'orders', 'order_items', 'cart_items', 'counters', 'settings', 'banner_config', 'admin_users', 'customers', 'categories', 'site_content', 'team_members', 'contact_messages'];
+const COLLECTIONS = ['products', 'orders', 'order_items', 'cart_items', 'counters', 'settings', 'banner_config', 'admin_users', 'customers', 'categories', 'site_content', 'team_members', 'contact_messages', 'newsletter_subscribers', 'rate_limits'];
 
 const COUNTER_KEYS = ['product', 'order', 'order_item', 'cart_item', 'category', 'team_member', 'contact_message'];
 
@@ -46,6 +46,10 @@ try {
     await counters.updateOne({ _id }, { $setOnInsert: { seq: 0 } }, { upsert: true });
     console.log(`  ${_id}`);
   }
+
+  const rateLimits = db.collection('rate_limits');
+  await rateLimits.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 });
+  console.log('  rate_limits TTL index on expires_at');
 
   console.log('\nDone. Optional: npm run seed:mongo  (sample products if products is empty)');
 } catch (err) {

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Truck, CreditCard, Bell, Shield, Save, Check, Loader2, Gem } from 'lucide-react';
 import { invalidateSettingsCache } from '../../lib/useStoreSettings';
 import { AdminPage, settingsFormGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
-import { adminFetch } from '../../lib/adminApi';
+import { adminFetch, setAdminToken } from '../../lib/adminApi';
 import { useAdminAuth } from '../../lib/adminAuth';
 import { PASSWORD_REQUIREMENTS_HINT, validatePasswordStrength } from '../../lib/passwordPolicy';
 
@@ -553,10 +553,11 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
       const res = await adminFetch('/api/admin-auth', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, currentPassword: currentPw, newPassword: newPw }),
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
+      if (data.token) setAdminToken(data.token);
       setMsg({ type: 'ok', text: 'Password changed successfully!' });
       setCurrentPw('');
       setNewPw('');

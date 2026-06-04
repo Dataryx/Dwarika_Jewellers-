@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../lib/apiUrl';
+import { customerAuthHeaders } from '../lib/customerAuth';
 import { displayOrderId } from '../lib/orderId';
 import {
   matchesOrderPeriod,
@@ -71,7 +72,9 @@ export default function Orders() {
     const fetchOrders = async () => {
       if (!user?.email) { setLoading(false); return; }
       try {
-        const res = await apiFetch(`/api/orders?email=${encodeURIComponent(user.email)}`);
+        const res = await apiFetch(`/api/orders?email=${encodeURIComponent(user.email)}`, {
+          headers: customerAuthHeaders(),
+        });
         const data = await res.json();
         setOrders(Array.isArray(data) ? data : []);
       } catch (err) {

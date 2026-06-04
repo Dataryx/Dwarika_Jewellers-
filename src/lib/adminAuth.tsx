@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminFetch, MASTER_EMAIL } from './adminApi';
+import { adminFetch, MASTER_EMAIL, setAdminToken } from './adminApi';
 
 export type AdminProfile = {
   email: string;
@@ -56,9 +56,10 @@ function readSessionEmail(): string | null {
   return raw ? raw.trim().toLowerCase() : null;
 }
 
-export function setAdminSession(email: string) {
+export function setAdminSession(email: string, token: string) {
   localStorage.setItem(SESSION_AUTH_KEY, 'true');
   localStorage.setItem(SESSION_EMAIL_KEY, email.trim().toLowerCase());
+  setAdminToken(token);
   localStorage.removeItem('adminName');
   localStorage.removeItem('adminRole');
 }
@@ -66,6 +67,7 @@ export function setAdminSession(email: string) {
 export function clearAdminSession() {
   localStorage.removeItem(SESSION_AUTH_KEY);
   localStorage.removeItem(SESSION_EMAIL_KEY);
+  setAdminToken(null);
   localStorage.removeItem('adminName');
   localStorage.removeItem('adminRole');
 }
@@ -95,7 +97,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await adminFetch('/api/admin-auth?me=true');
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load profile');
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearAdminSession();
+          setEmail(null);
+        }
+        throw new Error(data.error || 'Failed to load profile');
+      }
 
       const loaded: AdminProfile = {
         email: data.email || sessionEmail,

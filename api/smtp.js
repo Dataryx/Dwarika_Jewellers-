@@ -1,28 +1,42 @@
 import {
   loadSmtpConfig,
   saveSmtpConfig,
-  adminSmtpConfig,
+  sanitizeSmtpConfig,
   sendMailMessage,
   formatSmtpError,
 } from './_smtp.js';
 import { buildOrderReceiptEmailHtml } from './_orderReceiptEmail.js';
+import { requireAdmin } from './_adminAuth.js';
+import { handleApiRequest, apiError } from './_security.js';
+import { validateEmailAddress } from '../shared/emailValidation.mjs';
+import { getMongoDb } from './_mongo.js';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Email');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (
+    handleApiRequest(req, res, {
+      methods: 'GET, PUT, POST, OPTIONS',
+      headers: 'Content-Type, Authorization',
+    })
+  ) {
+    return;
+  }
 
   try {
+    const db = await getMongoDb();
+    const adminsCol = db.collection('admin_users');
+
+    const auth = await requireAdmin(req, adminsCol);
+    if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
     if (req.method === 'GET') {
       const smtp = await loadSmtpConfig();
-      return res.status(200).json(adminSmtpConfig(smtp));
+      return res.status(200).json(sanitizeSmtpConfig(smtp));
     }
 
     if (req.method === 'PUT') {
       const body = req.body || {};
       const saved = await saveSmtpConfig(body);
-      return res.status(200).json(saved);
+      return res.status(200).json(sanitizeSmtpConfig(saved));
     }
 
     if (req.method === 'POST') {
@@ -31,8 +45,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Unsupported action' });
       }
 
-      const target = String(toEmail || '').trim();
-      if (!target) return res.status(400).json({ error: 'Recipient email required' });
+      const targetCheck = validateEmailAddress(toEmail);
+      if (!targetCheck.ok) return res.status(400).json({ error: targetCheck.error });
+      const target = targetCheck.normalized;
 
       const stored = await loadSmtpConfig();
       const smtpOverride =
@@ -80,7 +95,7 @@ export default async function handler(req, res) {
         allowDisabled: true,
       });
 
-      return res.status(200).json({ ok: true, message: 'Test successful! Save your SMTP settings to apply them.' });
+      return res.status(200).json({ ok: true, message: 'Test email sent successfully.' });
     }
 
     res.status(405).json({ error: 'Method not allowed' });
