@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build:admin",
+  "buildCommand": "node scripts/vercel-build.mjs",
   "installCommand": "npm ci",
   "outputDirectory": "dist-admin",
   "headers": [
