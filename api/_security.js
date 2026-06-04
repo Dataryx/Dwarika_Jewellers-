@@ -85,6 +85,13 @@ export function apiError(res, err, status = 500) {
       message = isProduction()
         ? 'Database is not configured. Add MONGODB_URI in Vercel environment variables.'
         : err.message;
+    } else if (
+      /MongoDB authentication failed|Cannot reach MongoDB|Server selection|timed out/i.test(
+        err.message
+      )
+    ) {
+      code = 503;
+      message = err.message;
     } else if (!isProduction()) {
       message = err.message;
     }

@@ -1,7 +1,7 @@
 import { MongoClient } from 'mongodb';
 
-let client;
-let db;
+const globalCache = globalThis.__dwarikaMongo ?? { client: null, promise: null };
+globalThis.__dwarikaMongo = globalCache;
 
 function mongoOptionsFromEnv() {
   const user = process.env.MONGODB_USER?.trim();
@@ -12,24 +12,71 @@ function mongoOptionsFromEnv() {
   return {};
 }
 
+function dbName() {
+  return (process.env.MONGODB_DB_NAME || 'lumiere').trim();
+}
+
+function wrapMongoError(err) {
+  if (!(err instanceof Error)) return err;
+  const msg = err.message || '';
+  if (/authentication failed|bad auth|SCRAM/i.test(msg)) {
+    return new Error(
+      'MongoDB authentication failed. Check the username/password in MONGODB_URI (Atlas → Database Access).'
+    );
+  }
+  if (/timed out|Server selection|ECONNREFUSED|ENOTFOUND|network/i.test(msg)) {
+    return new Error(
+      'Cannot reach MongoDB. In Atlas → Network Access, allow 0.0.0.0/0 (or Vercel IPs), then redeploy.'
+    );
+  }
+  return err;
+}
+
+async function connectClient() {
+  const uri = process.env.MONGODB_URI?.trim();
+  if (!uri) {
+    throw new Error('MONGODB_URI is not set (add it to .env / Vercel env)');
+  }
+
+  const client = new MongoClient(uri, {
+    ...mongoOptionsFromEnv(),
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 10000,
+  });
+
+  try {
+    await client.connect();
+    await client.db(dbName()).command({ ping: 1 });
+    return client;
+  } catch (err) {
+    try {
+      await client.close();
+    } catch {
+      /* ignore */
+    }
+    throw wrapMongoError(err);
+  }
+}
+
 /**
  * @returns {import('mongodb').Db}
  */
 export async function getMongoDb() {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) {
-    throw new Error('MONGODB_URI is not set (add it to .env / Vercel env)');
+  if (!globalCache.promise) {
+    globalCache.promise = connectClient()
+      .then((client) => {
+        globalCache.client = client;
+        return client;
+      })
+      .catch((err) => {
+        globalCache.promise = null;
+        globalCache.client = null;
+        throw err;
+      });
   }
-  if (!client) {
-    client = new MongoClient(uri, {
-      ...mongoOptionsFromEnv(),
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 15000,
-    });
-    await client.connect();
-  }
-  const name = process.env.MONGODB_DB_NAME || 'lumiere';
-  return client.db(name);
+
+  const client = await globalCache.promise;
+  return client.db(dbName());
 }
 
 /** Monotonic integer ids (stored as document _id) for API compatibility with the React app */

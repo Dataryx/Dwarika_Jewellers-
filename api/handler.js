@@ -6,6 +6,7 @@ import cart from './_routes/cart.js';
 import categories from './_routes/categories.js';
 import contactInfo from './_routes/contact-info.js';
 import contact from './_routes/contact.js';
+import health from './_routes/health.js';
 import customerAuth from './_routes/customer-auth.js';
 import customers from './_routes/customers.js';
 import livePrices from './_routes/live-prices.js';
@@ -23,6 +24,7 @@ const ROUTES = {
   categories,
   'contact-info': contactInfo,
   contact,
+  health,
   'customer-auth': customerAuth,
   customers,
   'live-prices': livePrices,
