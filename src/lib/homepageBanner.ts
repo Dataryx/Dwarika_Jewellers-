@@ -1,4 +1,5 @@
 import { apiFetch } from './apiUrl';
+import { adminFetch } from './adminApi';
 
 export type HomeBannerConfig = {
   imageUrl: string;
@@ -81,14 +82,18 @@ export async function fetchHomepageBanner(): Promise<HomeBannerConfig> {
 }
 
 export async function saveHomepageBannerToApi(config: HomeBannerConfig): Promise<void> {
-  const res = await apiFetch('/api/banner', {
+  const res = await adminFetch('/api/banner', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
   });
-  if (!res.ok) throw new Error('Failed to save banner to server');
+  const payload = (await res.json().catch(() => ({}))) as Partial<HomeBannerConfig> & {
+    error?: string;
+  };
+  if (!res.ok) {
+    throw new Error(payload.error || 'Failed to save banner to server');
+  }
 
-  const payload = (await res.json().catch(() => ({}))) as Partial<HomeBannerConfig>;
   const saved = mergeWithDefaults({ ...config, ...payload });
   writeCachedHomepageBanner(saved);
   window.dispatchEvent(new CustomEvent(BANNER_UPDATED_EVENT));
