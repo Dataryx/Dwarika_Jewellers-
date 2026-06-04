@@ -3,9 +3,10 @@ export function isProduction() {
 }
 
 export function getClientIp(req) {
-  const xf = req.headers['x-forwarded-for'];
+  const headers = req.headers || {};
+  const xf = headers['x-forwarded-for'];
   if (xf) return String(Array.isArray(xf) ? xf[0] : xf).split(',')[0].trim();
-  const real = req.headers['x-real-ip'];
+  const real = headers['x-real-ip'];
   return String(Array.isArray(real) ? real[0] : real || 'unknown').trim();
 }
 
@@ -54,7 +55,7 @@ export function handleApiRequest(req, res, opts = {}) {
     opts.headers ||
     'Content-Type, Authorization, X-Admin-Email, X-User-Email, X-Session-Id, X-Customer-Token';
 
-  const origin = normalizeOrigin(req.headers.origin);
+  const origin = normalizeOrigin(req.headers?.origin);
   const allowed = allowedOrigins();
 
   if (origin && (allowed.length === 0 || allowed.includes(origin))) {

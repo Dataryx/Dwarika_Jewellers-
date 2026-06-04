@@ -1,7 +1,7 @@
 import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
 
 function getSessionId(req) {
-  return req.headers['x-session-id'] || '';
+  return req.headers?.['x-session-id'] || '';
 }
 
 export default async function handler(req, res) {

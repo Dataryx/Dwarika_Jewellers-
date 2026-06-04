@@ -44,7 +44,14 @@ function buildForwardedReq(req) {
   const query = { ...(req.query || {}) };
   delete query.route;
   delete query.path;
-  return { ...req, query };
+  return {
+    ...req,
+    query,
+    headers: req.headers || {},
+    method: req.method || 'GET',
+    body: req.body,
+    url: req.url,
+  };
 }
 
 /** Lightweight diagnostic — no Mongo, no shared imports. */
