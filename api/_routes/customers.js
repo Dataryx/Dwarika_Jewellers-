@@ -1,7 +1,7 @@
-import { getMongoDb } from './_mongo.js';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError } from './_security.js';
-import { toPublicCustomer } from './_customerAuth.js';
+import { getMongoDb } from '../_mongo.js';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError } from '../_security.js';
+import { toPublicCustomer } from '../_customerAuth.js';
 
 function toAdminCustomer(doc, stats = {}) {
   const pub = toPublicCustomer(doc) || {};

@@ -1,6 +1,6 @@
-import { getMongoDb } from './_mongo.js';
-import { fetchNepalBullionRates } from './_fenegosidaRates.js';
-import { buildGoldRatesFromBullion, buildNepalGoldRates } from '../shared/goldRates.mjs';
+import { getMongoDb } from '../_mongo.js';
+import { fetchNepalBullionRates } from '../_fenegosidaRates.js';
+import { buildGoldRatesFromBullion, buildNepalGoldRates } from '../../shared/goldRates.mjs';
 
 const SETTINGS_ID = 'store_settings';
 const DEFAULT_GRAMS_PER_TOLA = 11.664;

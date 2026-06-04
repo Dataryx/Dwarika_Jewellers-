@@ -115,7 +115,7 @@ export function apiDevPlugin(): Plugin {
         const resLike = createResAdapter(res as ServerResponse)
 
         try {
-          const filePath = path.join(__dirname, 'api', `${segment}.js`)
+          const filePath = path.join(__dirname, 'api', '_routes', `${segment}.js`)
           const mod = await server.ssrLoadModule(filePath)
           const handler = mod.default as (req: typeof reqLike, res: typeof resLike) => void | Promise<void>
           await handler(reqLike, resLike)

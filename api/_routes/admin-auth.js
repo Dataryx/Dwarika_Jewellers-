@@ -1,10 +1,10 @@
-import { getMongoDb } from './_mongo.js';
-import { validatePasswordStrength } from '../shared/passwordPolicy.mjs';
-import { normalizeEmail, validateEmailAddress } from '../shared/emailValidation.mjs';
-import { createResetToken, resetExpiresAt } from './_customerAuth.js';
-import { sendPasswordResetEmail } from './_customerAuthEmail.js';
-import { handleApiRequest, apiError, isProduction } from './_security.js';
-import { rateLimitRequest } from './_rateLimit.js';
+import { getMongoDb } from '../_mongo.js';
+import { validatePasswordStrength } from '../../shared/passwordPolicy.mjs';
+import { normalizeEmail, validateEmailAddress } from '../../shared/emailValidation.mjs';
+import { createResetToken, resetExpiresAt } from '../_customerAuth.js';
+import { sendPasswordResetEmail } from '../_customerAuthEmail.js';
+import { handleApiRequest, apiError, isProduction } from '../_security.js';
+import { rateLimitRequest } from '../_rateLimit.js';
 import {
   MASTER_EMAIL,
   createAdminToken,
@@ -15,7 +15,7 @@ import {
   requireAdmin,
   toPublicAdmin,
   verifyAdminPassword,
-} from './_adminAuth.js';
+} from '../_adminAuth.js';
 
 function profileFieldsFromBody(body) {
   return {

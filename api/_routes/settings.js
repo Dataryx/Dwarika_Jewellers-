@@ -1,7 +1,7 @@
-import { getMongoDb } from './_mongo.js';
+import { getMongoDb } from '../_mongo.js';
 import { clearLivePricesCache } from './live-prices.js';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError } from './_security.js';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError } from '../_security.js';
 
 const SETTINGS_ID = 'store_settings';
 

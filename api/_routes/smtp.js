@@ -4,12 +4,12 @@ import {
   sanitizeSmtpConfig,
   sendMailMessage,
   formatSmtpError,
-} from './_smtp.js';
-import { buildOrderReceiptEmailHtml } from './_orderReceiptEmail.js';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError } from './_security.js';
-import { validateEmailAddress } from '../shared/emailValidation.mjs';
-import { getMongoDb } from './_mongo.js';
+} from '../_smtp.js';
+import { buildOrderReceiptEmailHtml } from '../_orderReceiptEmail.js';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError } from '../_security.js';
+import { validateEmailAddress } from '../../shared/emailValidation.mjs';
+import { getMongoDb } from '../_mongo.js';
 
 export default async function handler(req, res) {
   if (

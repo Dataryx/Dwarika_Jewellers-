@@ -1,6 +1,6 @@
-import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError, sanitizeMediaUrl } from './_security.js';
+import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
 
 const ABOUT_ID = 'about_page';
 

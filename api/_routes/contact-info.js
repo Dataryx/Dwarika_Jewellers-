@@ -1,6 +1,6 @@
-import { getMongoDb } from './_mongo.js';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError, sanitizeMediaUrl } from './_security.js';
+import { getMongoDb } from '../_mongo.js';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
 
 const INFO_ID = 'contact_info';
 

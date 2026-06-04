@@ -1,4 +1,4 @@
-import { getMongoDb } from './_mongo.js';
+import { getMongoDb } from '../_mongo.js';
 import {
   normalizeEmail,
   hashPassword,
@@ -12,12 +12,12 @@ import {
   resetExpiresAt,
   createVerifyToken,
   verifyExpiresAt,
-} from './_customerAuth.js';
-import { sendVerificationEmail, sendPasswordResetEmail } from './_customerAuthEmail.js';
-import { validatePasswordStrength } from '../shared/passwordPolicy.mjs';
-import { validateEmailAddress } from '../shared/emailValidation.mjs';
-import { handleApiRequest, apiError } from './_security.js';
-import { rateLimitRequest } from './_rateLimit.js';
+} from '../_customerAuth.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../_customerAuthEmail.js';
+import { validatePasswordStrength } from '../../shared/passwordPolicy.mjs';
+import { validateEmailAddress } from '../../shared/emailValidation.mjs';
+import { handleApiRequest, apiError } from '../_security.js';
+import { rateLimitRequest } from '../_rateLimit.js';
 
 function parseBody(req) {
   let body = req.body;

@@ -1,10 +1,10 @@
-import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
+import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
 import crypto from 'node:crypto';
-import { validateEmailAddress } from '../shared/emailValidation.mjs';
-import { resolveProductPrice, computeCheckoutTotals } from '../shared/pricing.mjs';
-import { getBearerToken, verifyCustomerToken, normalizeEmail } from './_customerAuth.js';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError, ORDER_STATUSES } from './_security.js';
+import { validateEmailAddress } from '../../shared/emailValidation.mjs';
+import { resolveProductPrice, computeCheckoutTotals } from '../../shared/pricing.mjs';
+import { getBearerToken, verifyCustomerToken, normalizeEmail } from '../_customerAuth.js';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError, ORDER_STATUSES } from '../_security.js';
 
 const SETTINGS_ID = 'store_settings';
 
@@ -244,7 +244,7 @@ export default async function handler(req, res) {
       }));
 
       try {
-        const { sendOrderReceiptEmail } = await import('./_orderReceiptEmail.js');
+        const { sendOrderReceiptEmail } = await import('../_orderReceiptEmail.js');
         await sendOrderReceiptEmail(
           {
             ...docToJson(orderDoc),

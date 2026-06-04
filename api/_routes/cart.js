@@ -1,4 +1,4 @@
-import { getMongoDb, nextSeq, docToJson } from './_mongo.js';
+import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
 
 function getSessionId(req) {
   return req.headers['x-session-id'] || '';

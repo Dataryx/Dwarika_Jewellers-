@@ -58,7 +58,7 @@ npm run seed:smtp   # optional - or configure SMTP in Admin → SMTP after deplo
 
 5. Deploy.
 
-The `api/` folder is deployed automatically as **Vercel Serverless Functions** at `/api/*`.
+The `api/` folder is deployed as **one** catch-all serverless function (`api/[...path].js`) that routes to handlers in `api/_routes/`. This stays within Vercel Hobby’s **12 functions per deployment** limit.
 
 ### Environment variables (Vercel → Settings → Environment Variables)
 

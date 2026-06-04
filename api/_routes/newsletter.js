@@ -1,8 +1,8 @@
-import { getMongoDb, nextSeq } from './_mongo.js';
-import { validateEmailAddress } from '../shared/emailValidation.mjs';
-import { requireAdmin } from './_adminAuth.js';
-import { handleApiRequest, apiError } from './_security.js';
-import { rateLimitRequest } from './_rateLimit.js';
+import { getMongoDb, nextSeq } from '../_mongo.js';
+import { validateEmailAddress } from '../../shared/emailValidation.mjs';
+import { requireAdmin } from '../_adminAuth.js';
+import { handleApiRequest, apiError } from '../_security.js';
+import { rateLimitRequest } from '../_rateLimit.js';
 
 export default async function handler(req, res) {
   if (
