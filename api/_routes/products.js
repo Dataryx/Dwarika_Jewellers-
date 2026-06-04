@@ -1,6 +1,6 @@
 import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
 import { requireAdmin } from '../_adminAuth.js';
-import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
+import { handleApiRequest, apiError, sanitizeAdminImageUrl } from '../_security.js';
 
 export default async function handler(req, res) {
   if (
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = req.body || {};
-      const imageUrl = sanitizeMediaUrl(body.image_url);
+      const imageUrl = sanitizeAdminImageUrl(body.image_url);
       if (body.image_url && imageUrl === null) {
         return res.status(400).json({ error: 'Invalid image URL' });
       }
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
         featured: raw.featured,
       };
       if (raw.image_url !== undefined) {
-        const imageUrl = sanitizeMediaUrl(raw.image_url);
+        const imageUrl = sanitizeAdminImageUrl(raw.image_url);
         if (raw.image_url && imageUrl === null) {
           return res.status(400).json({ error: 'Invalid image URL' });
         }

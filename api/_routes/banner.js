@@ -1,5 +1,5 @@
 import { getMongoDb } from '../_mongo.js';
-import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
+import { handleApiRequest, apiError, parseJsonBody, sanitizeAdminImageUrl } from '../_security.js';
 
 const BANNER_ID = 'homepage_banner';
 
@@ -31,12 +31,14 @@ export default async function handler(req, res) {
       const auth = await requireAdmin(req, adminsCol);
       if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
-      const body = req.body || {};
+      const body = parseJsonBody(req);
       delete body._id;
       if (body.imageUrl !== undefined) {
-        const url = sanitizeMediaUrl(body.imageUrl);
+        const url = sanitizeAdminImageUrl(body.imageUrl);
         if (body.imageUrl && url === null) {
-          return res.status(400).json({ error: 'Invalid banner image URL' });
+          return res.status(400).json({
+            error: 'Invalid banner image. Use a smaller image or an https:// URL.',
+          });
         }
         body.imageUrl = url ?? '';
       }

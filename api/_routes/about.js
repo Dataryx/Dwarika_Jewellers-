@@ -1,5 +1,5 @@
 import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
-import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
+import { handleApiRequest, apiError, sanitizeAdminImageUrl } from '../_security.js';
 
 const ABOUT_ID = 'about_page';
 
@@ -41,7 +41,7 @@ function pickAboutContent(body) {
   }
   for (const urlKey of ['heroImage', 'storyImage']) {
     if (out[urlKey] !== undefined) {
-      const url = sanitizeMediaUrl(out[urlKey]);
+      const url = sanitizeAdminImageUrl(out[urlKey]);
       if (out[urlKey] && url === null) return { error: `Invalid ${urlKey}` };
       out[urlKey] = url ?? '';
     }
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
       if (section === 'team-add') {
         const { name, role, image } = req.body || {};
         if (!name) return res.status(400).json({ error: 'Name is required' });
-        const imageUrl = sanitizeMediaUrl(image);
+        const imageUrl = sanitizeAdminImageUrl(image);
         if (image && imageUrl === null) {
           return res.status(400).json({ error: 'Invalid image URL' });
         }
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
         if (name !== undefined) updates.name = String(name).slice(0, 120);
         if (role !== undefined) updates.role = String(role).slice(0, 120);
         if (image !== undefined) {
-          const imageUrl = sanitizeMediaUrl(image);
+          const imageUrl = sanitizeAdminImageUrl(image);
           if (image && imageUrl === null) {
             return res.status(400).json({ error: 'Invalid image URL' });
           }

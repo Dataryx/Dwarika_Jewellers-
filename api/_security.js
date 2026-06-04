@@ -106,13 +106,19 @@ export function apiError(res, err, status = 500) {
   return res.status(code).json({ error: message });
 }
 
-/** Reject javascript/data URLs; allow https/http and same-site relative paths. */
-export function sanitizeMediaUrl(url, { maxLen = 2048 } = {}) {
+/** Reject javascript URLs; allow https/http, relative paths, and optional admin data:image uploads. */
+export function sanitizeMediaUrl(url, { maxLen = 2048, allowDataImages = false } = {}) {
   if (url == null || url === '') return '';
   const trimmed = String(url).trim();
   if (!trimmed) return '';
+  if (/^javascript:/i.test(trimmed)) return null;
+  if (/^data:/i.test(trimmed)) {
+    if (!allowDataImages) return null;
+    if (!/^data:image\//i.test(trimmed)) return null;
+    if (trimmed.length > maxLen) return null;
+    return trimmed;
+  }
   if (trimmed.length > maxLen) return null;
-  if (/^javascript:/i.test(trimmed) || /^data:/i.test(trimmed)) return null;
   if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
   try {
     const parsed = new URL(trimmed);
@@ -121,6 +127,29 @@ export function sanitizeMediaUrl(url, { maxLen = 2048 } = {}) {
   } catch {
     return null;
   }
+}
+
+/** Admin uploads from ImageUploadField (compressed data URLs or https links). */
+export function sanitizeAdminImageUrl(url) {
+  return sanitizeMediaUrl(url, { maxLen: 900_000, allowDataImages: true });
+}
+
+export function parseJsonBody(req) {
+  let body = req.body;
+  if (typeof body === 'string') {
+    const trimmed = body.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        body = JSON.parse(trimmed);
+      } catch {
+        body = {};
+      }
+    } else {
+      body = {};
+    }
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
+  return body;
 }
 
 export const ORDER_STATUSES = new Set([

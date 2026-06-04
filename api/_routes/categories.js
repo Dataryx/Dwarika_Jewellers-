@@ -1,5 +1,5 @@
 import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
-import { handleApiRequest, apiError, sanitizeMediaUrl } from '../_security.js';
+import { handleApiRequest, apiError, sanitizeAdminImageUrl } from '../_security.js';
 
 export default async function handler(req, res) {
   if (
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { name, image_url, path } = req.body || {};
       if (!name) return res.status(400).json({ error: 'name is required' });
-      const imageUrl = sanitizeMediaUrl(image_url);
+      const imageUrl = sanitizeAdminImageUrl(image_url);
       if (image_url && imageUrl === null) {
         return res.status(400).json({ error: 'Invalid image URL' });
       }
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       const updates = {};
       if (name !== undefined) updates.name = String(name).trim().slice(0, 120);
       if (image_url !== undefined) {
-        const imageUrl = sanitizeMediaUrl(image_url);
+        const imageUrl = sanitizeAdminImageUrl(image_url);
         if (image_url && imageUrl === null) {
           return res.status(400).json({ error: 'Invalid image URL' });
         }
