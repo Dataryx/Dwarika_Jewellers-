@@ -32,24 +32,29 @@ const ROUTES = {
   smtp,
 };
 
-export default async function handler(req, res) {
-  const segments = Array.isArray(req.query.path)
-    ? req.query.path
-    : req.query.path
-      ? [req.query.path]
-      : [];
-
-  const name = segments[0];
-  if (!name) {
-    return res.status(404).json({ error: 'Not found' });
+/** Resolve API segment from Vercel rewrite, catch-all query, or request URL. */
+function resolveRouteName(req) {
+  if (req.query?.route) {
+    const segment = String(req.query.route).split('/').filter(Boolean)[0];
+    if (segment) return decodeURIComponent(segment);
   }
 
-  if (segments.length > 1) {
-    if (name === 'cart' || name === 'products') {
-      return res.status(410).json({
-        error: `Use /api/${name}?id= instead of /api/${name}/${segments[1]}`,
-      });
-    }
+  const pathParam = req.query?.path;
+  if (Array.isArray(pathParam) && pathParam[0]) return pathParam[0];
+  if (typeof pathParam === 'string' && pathParam) {
+    return pathParam.split('/').filter(Boolean)[0];
+  }
+
+  const raw = req.url || '';
+  const pathname = raw.includes('://') ? new URL(raw).pathname : raw.split('?')[0];
+  const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
+  if (parts[0] === 'handler') return parts[1] || null;
+  return parts[0] || null;
+}
+
+export default async function handler(req, res) {
+  const name = resolveRouteName(req);
+  if (!name) {
     return res.status(404).json({ error: 'Not found' });
   }
 
