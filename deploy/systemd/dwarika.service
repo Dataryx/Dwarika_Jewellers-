@@ -1,0 +1,22 @@
+[Unit]
+Description=Dwarika Jewellers web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dwarika
+Group=dwarika
+WorkingDirectory=/var/www/dwarika
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+EnvironmentFile=/var/www/dwarika/.env
+ExecStart=/usr/bin/node /var/www/dwarika/server.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

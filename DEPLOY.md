@@ -1,5 +1,7 @@
 # Deploying Dwarika (Storefront + Admin)
 
+For a self-managed Linux server, see [DEPLOY-VPS.md](./DEPLOY-VPS.md). The instructions below are for Vercel.
+
 This repo ships **two separate frontends** from one Git repository. Deploy them as **two Vercel projects**:
 
 | App | URL example | Build | Output | Backend |
