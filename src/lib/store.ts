@@ -2,6 +2,8 @@ import { create } from 'zustand';
 
 export interface Product {
   id: number;
+  /** Admin-set unique catalog code (e.g. DW-RING-001). */
+  product_id?: string;
   name: string;
   description: string;
   price: number;

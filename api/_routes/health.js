@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(503).json({
       ok: false,
       mongo: 'not_configured',
-      hint: 'Add MONGODB_URI in Vercel → Settings → Environment Variables (Production), then redeploy.',
+      hint: 'Add MONGODB_URI to the server .env, then restart the app.',
     });
   }
 

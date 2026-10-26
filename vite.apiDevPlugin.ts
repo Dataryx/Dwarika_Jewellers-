@@ -68,10 +68,10 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return raw
 }
 
-/** Serves `api/*.js` Vercel handlers during `vite` so `/api/*` works on localhost */
+/** Serves `api/_routes/*.js` during `vite` so `/api/*` works on localhost */
 export function apiDevPlugin(): Plugin {
   return {
-    name: 'api-dev-vercel-handlers',
+    name: 'api-dev-handlers',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url

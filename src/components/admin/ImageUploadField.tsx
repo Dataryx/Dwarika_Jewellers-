@@ -27,7 +27,7 @@ export function ImageUploadField({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const maxBlobBytes = variant === 'banner' ? 480_000 : 900_000;
+  const maxBlobBytes = variant === 'banner' ? 480_000 : 600_000;
 
   const isDataUrl = value.startsWith('data:');
   const urlFieldValue = isDataUrl ? '' : value;

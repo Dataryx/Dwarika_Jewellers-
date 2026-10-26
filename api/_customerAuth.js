@@ -7,7 +7,7 @@ const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 function authSecret() {
   const secret = process.env.CUSTOMER_AUTH_SECRET?.trim();
   if (secret) return secret;
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production') {
     throw new Error('CUSTOMER_AUTH_SECRET is required in production');
   }
   return 'dwarika-dev-customer-auth-secret';
@@ -41,9 +41,15 @@ function signPayload(payload) {
   return `${Buffer.from(json, 'utf8').toString('base64url')}.${sig}`;
 }
 
-export function createCustomerToken(email) {
+export function customerTokenVersion(user) {
+  return Number(user?.token_version) || 0;
+}
+
+export function createCustomerToken(email, tokenVersion = 0) {
   const payload = {
     sub: normalizeEmail(email),
+    tv: Number(tokenVersion) || 0,
+    jti: crypto.randomBytes(16).toString('hex'),
     iat: Date.now(),
     exp: Date.now() + TOKEN_TTL_MS,
   };

@@ -5,6 +5,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import apiHandler from './api/handler.js'
+import {
+  applySecurityHeaders,
+  assertProductionConfig,
+  isProduction,
+  MAX_API_BODY_BYTES,
+} from './api/_security.js'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const storefrontDir = path.join(root, 'dist')
@@ -12,6 +18,13 @@ const adminDir = path.join(root, 'dist-admin')
 const port = Number(process.env.PORT || 3000)
 const host = process.env.HOST || '127.0.0.1'
 const configuredAdminHost = process.env.ADMIN_HOST?.toLowerCase()
+
+try {
+  assertProductionConfig()
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err)
+  process.exit(1)
+}
 
 function isAdminHost(requestHost) {
   const hostname = requestHost.split(':')[0].toLowerCase()
@@ -43,9 +56,23 @@ function getRequestBody(request) {
     return Promise.resolve(undefined)
   }
 
+  const declared = Number(request.headers['content-length'] || 0)
+  if (declared > MAX_API_BODY_BYTES) {
+    return Promise.reject(new Error('Request body too large'))
+  }
+
   return new Promise((resolve, reject) => {
     const chunks = []
-    request.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+    let size = 0
+    request.on('data', (chunk) => {
+      size += chunk.length
+      if (size > MAX_API_BODY_BYTES) {
+        reject(new Error('Request body too large'))
+        request.destroy()
+        return
+      }
+      chunks.push(Buffer.from(chunk))
+    })
     request.on('end', () => {
       const raw = Buffer.concat(chunks).toString('utf8')
       if (!raw) {
@@ -88,7 +115,28 @@ function createApiResponse(response) {
   }
 }
 
-async function serveStatic(response, directory, pathname) {
+function staticHeaders(filePath, isAdmin) {
+  const headers = {
+    'Content-Type': contentTypeFor(filePath),
+    'Cache-Control': filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
+  }
+  // Apply CSP on HTML documents only
+  if (filePath.endsWith('.html') || filePath.endsWith('index.html')) {
+    applySecurityHeaders(
+      {
+        setHeader(name, value) {
+          headers[name] = value
+        },
+      },
+      { isAdmin, csp: true }
+    )
+  } else {
+    headers['X-Content-Type-Options'] = 'nosniff'
+  }
+  return headers
+}
+
+async function serveStatic(response, directory, pathname, isAdmin) {
   const requestedPath = pathname === '/' ? '/index.html' : pathname
   const candidate = path.resolve(directory, `.${requestedPath}`)
   if (candidate !== directory && !candidate.startsWith(`${directory}${path.sep}`)) {
@@ -100,29 +148,40 @@ async function serveStatic(response, directory, pathname) {
   try {
     const info = await stat(candidate)
     if (!info.isFile()) throw new Error('Not a file')
-    response.writeHead(200, {
-      'Content-Type': contentTypeFor(candidate),
-      'Cache-Control': candidate.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
-    })
+    response.writeHead(200, staticHeaders(candidate, isAdmin))
     createReadStream(candidate).pipe(response)
   } catch {
-    const index = await readFile(path.join(directory, 'index.html'))
-    response.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-cache',
-    })
+    const indexPath = path.join(directory, 'index.html')
+    const index = await readFile(indexPath)
+    response.writeHead(200, staticHeaders(indexPath, isAdmin))
     response.end(index)
   }
 }
 
+const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'])
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 60_000
+
 const server = createServer(async (request, response) => {
+  const method = (request.method || 'GET').toUpperCase()
+  if (!ALLOWED_METHODS.has(method) || method === 'TRACE' || method === 'TRACK') {
+    response.writeHead(405, { Allow: 'GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH' })
+    response.end('Method Not Allowed')
+    return
+  }
+
+  request.setTimeout(REQUEST_TIMEOUT_MS, () => {
+    if (!response.headersSent) {
+      response.writeHead(408, { 'Content-Type': 'application/json; charset=utf-8' })
+      response.end(JSON.stringify({ error: 'Request timeout' }))
+    }
+    request.destroy()
+  })
+
   const requestUrl = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
   const pathname = decodeURIComponent(requestUrl.pathname)
+  const admin = isAdminHost(request.headers.host || '')
 
-  response.setHeader('X-Content-Type-Options', 'nosniff')
-  response.setHeader('X-Frame-Options', 'DENY')
-  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  applySecurityHeaders(response, { isAdmin: admin, csp: false })
 
   if (pathname.startsWith('/api/')) {
     response.setHeader('Cache-Control', 'no-store')
@@ -134,24 +193,38 @@ const server = createServer(async (request, response) => {
         query: Object.fromEntries(requestUrl.searchParams),
         body,
         url: request.url,
+        socket: request.socket,
       }
       await apiHandler(req, createApiResponse(response))
     } catch (error) {
       console.error('API request failed:', error)
       if (!response.headersSent) {
-        response.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-        response.end(JSON.stringify({ error: error instanceof Error ? error.message : 'Invalid request' }))
+        const isTooLarge = error instanceof Error && /too large/i.test(error.message)
+        response.writeHead(isTooLarge ? 413 : 400, { 'Content-Type': 'application/json; charset=utf-8' })
+        response.end(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : 'Invalid request',
+          })
+        )
       }
     }
     return
   }
 
-  const directory = isAdminHost(request.headers.host || '') ? adminDir : storefrontDir
-  await serveStatic(response, directory, pathname)
+  const directory = admin ? adminDir : storefrontDir
+  await serveStatic(response, directory, pathname, admin)
 })
+
+server.requestTimeout = REQUEST_TIMEOUT_MS
+server.headersTimeout = REQUEST_TIMEOUT_MS + 5_000
+server.keepAliveTimeout = 10_000
+server.maxHeadersCount = 50
 
 server.listen(port, host, () => {
   console.log(`Dwarika server listening on http://${host}:${port}`)
+  if (isProduction()) {
+    console.log('[security] Production mode: CORS + CSP + body limits + timeouts enabled')
+  }
 })
 
 function shutdown() {

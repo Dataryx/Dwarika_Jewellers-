@@ -2,9 +2,16 @@ import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
 import crypto from 'node:crypto';
 import { validateEmailAddress } from '../../shared/emailValidation.mjs';
 import { resolveProductPrice, computeCheckoutTotals } from '../../shared/pricing.mjs';
-import { getBearerToken, verifyCustomerToken, normalizeEmail } from '../_customerAuth.js';
+import {
+  getBearerToken,
+  verifyCustomerToken,
+  normalizeEmail,
+  customerTokenVersion,
+} from '../_customerAuth.js';
 import { requireAdmin } from '../_adminAuth.js';
 import { handleApiRequest, apiError, ORDER_STATUSES } from '../_security.js';
+import { rateLimitRequest } from '../_rateLimit.js';
+import { auditAdmin } from '../_auditLog.js';
 
 const SETTINGS_ID = 'store_settings';
 
@@ -98,6 +105,10 @@ export default async function handler(req, res) {
         if (!payload || payload.sub !== requested) {
           return res.status(403).json({ error: 'Forbidden' });
         }
+        const customer = await db.collection('customers').findOne({ _id: requested });
+        if (!customer || Number(payload.tv || 0) !== customerTokenVersion(customer)) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
         const orderRows = await ordersCol
           .find({ customer_email: requested })
           .sort({ created_at: -1 })
@@ -113,6 +124,14 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      const rl = await rateLimitRequest(db, req, 'checkout', 'order', {
+        max: 20,
+        windowMs: 15 * 60 * 1000,
+      });
+      if (!rl.ok) {
+        return res.status(429).json({ error: 'Too many checkout attempts. Try again later.' });
+      }
+
       const body = req.body || {};
       const { customer_name, items, payment_method, shipping_address } = body;
       const headerEmail = String(req.headers['x-user-email'] || '').trim();
@@ -129,6 +148,9 @@ export default async function handler(req, res) {
 
       if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Order must include at least one item' });
+      }
+      if (items.length > 50) {
+        return res.status(400).json({ error: 'Too many line items in one order' });
       }
 
       const settings = await loadStoreSettings(db);
@@ -285,6 +307,11 @@ export default async function handler(req, res) {
       );
       const doc = r.value ?? r;
       if (!doc) return res.status(404).json({ error: 'Not found' });
+      await auditAdmin(db, req, auth.caller, 'order.status.update', {
+        orderId,
+        from: existing.status,
+        to: String(status),
+      });
       return res.status(200).json(docToJson(doc));
     }
 

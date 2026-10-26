@@ -1,11 +1,24 @@
 import { getClientIp } from './_security.js';
 
+let ttlIndexEnsured = false;
+
+async function ensureRateLimitTtl(col) {
+  if (ttlIndexEnsured) return;
+  ttlIndexEnsured = true;
+  try {
+    await col.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, background: true });
+  } catch {
+    /* index may already exist */
+  }
+}
+
 /**
- * MongoDB-backed sliding window rate limiter (works across Vercel instances).
+ * MongoDB-backed sliding window rate limiter (shared across app instances).
  * @returns {Promise<{ ok: boolean, retryAfterSec?: number }>}
  */
 export async function checkRateLimit(db, scope, identifier, { windowMs = 15 * 60 * 1000, max = 20 } = {}) {
   const col = db.collection('rate_limits');
+  await ensureRateLimitTtl(col);
   const now = Date.now();
   const bucket = Math.floor(now / windowMs);
   const docId = `${scope}:${identifier}:${bucket}`;

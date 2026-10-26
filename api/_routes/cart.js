@@ -1,23 +1,44 @@
 import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
+import { handleApiRequest, apiError } from '../_security.js';
+import { rateLimitRequest } from '../_rateLimit.js';
 
 function getSessionId(req) {
-  return req.headers?.['x-session-id'] || '';
+  const raw = String(req.headers?.['x-session-id'] || '').trim();
+  if (!raw || raw.length > 128) return '';
+  if (!/^[A-Za-z0-9_-]+$/.test(raw)) return '';
+  return raw;
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Id');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (
+    handleApiRequest(req, res, {
+      methods: 'GET, POST, PUT, DELETE, OPTIONS',
+      headers: 'Content-Type, Authorization, X-Session-Id',
+    })
+  ) {
+    return;
+  }
 
   const sessionId = getSessionId(req);
-  if (!sessionId) return res.status(400).json({ error: 'Session ID required (X-Session-Id header)' });
+  if (!sessionId) {
+    return res.status(400).json({ error: 'Session ID required (X-Session-Id header)' });
+  }
 
   try {
     const db = await getMongoDb();
     const cartCol = db.collection('cart_items');
     const productsCol = db.collection('products');
     const { id } = req.query;
+
+    if (req.method !== 'GET') {
+      const rl = await rateLimitRequest(db, req, 'cart-write', sessionId, {
+        max: 120,
+        windowMs: 15 * 60 * 1000,
+      });
+      if (!rl.ok) {
+        return res.status(429).json({ error: 'Too many cart updates. Try again later.' });
+      }
+    }
 
     if (req.method === 'GET') {
       const cartItems = await cartCol.find({ session_id: sessionId }).sort({ created_at: -1 }).toArray();
@@ -38,12 +59,13 @@ export default async function handler(req, res) {
       const { product_id, quantity } = req.body || {};
       const pid = Number(product_id);
       if (!Number.isFinite(pid)) return res.status(400).json({ error: 'product_id required' });
+      const qty = Math.max(1, Math.min(99, Number(quantity) || 1));
 
       const existing = await cartCol.findOne({ session_id: sessionId, product_id: pid });
       if (existing) {
-        const newQty = existing.quantity + (Number(quantity) || 1);
+        const newQty = Math.min(99, existing.quantity + qty);
         const r = await cartCol.findOneAndUpdate(
-          { _id: existing._id },
+          { _id: existing._id, session_id: sessionId },
           { $set: { quantity: newQty } },
           { returnDocument: 'after' }
         );
@@ -56,7 +78,7 @@ export default async function handler(req, res) {
         _id: lineId,
         session_id: sessionId,
         product_id: pid,
-        quantity: Number(quantity) || 1,
+        quantity: qty,
         created_at: new Date(),
       };
       await cartCol.insertOne(doc);
@@ -67,10 +89,11 @@ export default async function handler(req, res) {
       const { quantity } = req.body || {};
       const itemId = Number(id || req.body?.id);
       if (!Number.isFinite(itemId)) return res.status(400).json({ error: 'Item ID required' });
+      const qty = Math.max(1, Math.min(99, Number(quantity) || 1));
 
       const r = await cartCol.findOneAndUpdate(
         { _id: itemId, session_id: sessionId },
-        { $set: { quantity: Number(quantity) } },
+        { $set: { quantity: qty } },
         { returnDocument: 'after' }
       );
       const doc = r.value ?? r;
@@ -94,7 +117,6 @@ export default async function handler(req, res) {
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error('API error:', err);
-    res.status(500).json({ error: err.message });
+    return apiError(res, err);
   }
 }

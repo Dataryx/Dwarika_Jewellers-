@@ -15,8 +15,25 @@ EnvironmentFile=/var/www/dwarika/.env
 ExecStart=/usr/bin/node /var/www/dwarika/server.mjs
 Restart=always
 RestartSec=5
+TimeoutStopSec=20
+
+# Hardening
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/dwarika
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+
+# Resource limits (adjust for VPS size)
+LimitNOFILE=65535
+MemoryMax=768M
 
 [Install]
 WantedBy=multi-user.target

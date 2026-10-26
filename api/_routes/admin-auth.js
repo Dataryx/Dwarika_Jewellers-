@@ -3,18 +3,34 @@ import { validatePasswordStrength } from '../../shared/passwordPolicy.mjs';
 import { normalizeEmail, validateEmailAddress } from '../../shared/emailValidation.mjs';
 import { createResetToken, resetExpiresAt } from '../_customerAuth.js';
 import { sendPasswordResetEmail } from '../_customerAuthEmail.js';
-import { handleApiRequest, apiError, isProduction } from '../_security.js';
+import {
+  handleApiRequest,
+  apiError,
+  isProduction,
+  getClientIp,
+  isIpAllowedForAdmin,
+  parseJsonBody,
+} from '../_security.js';
 import { rateLimitRequest } from '../_rateLimit.js';
+import { auditAdmin, writeAuditLog } from '../_auditLog.js';
 import {
   MASTER_EMAIL,
+  adminTokenVersion,
+  bumpAdminTokenVersion,
+  clearAdminLoginFailures,
   createAdminToken,
   findAdminByEmail,
+  getAdminBearerToken,
+  isAdminLocked,
   isMasterUser,
   migrateAdminPasswordIfNeeded,
   passwordHashUpdate,
+  recordAdminLoginFailure,
   requireAdmin,
+  revokeAdminToken,
   toPublicAdmin,
   verifyAdminPassword,
+  verifyAdminToken,
 } from '../_adminAuth.js';
 
 function profileFieldsFromBody(body) {
@@ -80,21 +96,7 @@ async function ensureDefaultAdmin(col) {
 }
 
 function parseRequestBody(req) {
-  let body = req.body;
-  if (typeof body === 'string') {
-    const trimmed = body.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      try {
-        body = JSON.parse(trimmed);
-      } catch {
-        body = {};
-      }
-    } else {
-      body = {};
-    }
-  }
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
-  return body;
+  return parseJsonBody(req);
 }
 
 function isCreateAdminRequest(body) {
@@ -182,6 +184,23 @@ export default async function handler(req, res) {
         });
       }
 
+      if (body.action === 'logout') {
+        const token = getAdminBearerToken(req);
+        const payload = verifyAdminToken(token);
+        if (payload) {
+          await revokeAdminToken(db, payload);
+          await writeAuditLog(db, {
+            action: 'admin.logout',
+            actor: payload.sub || 'unknown',
+            ip: getClientIp(req),
+            method: 'POST',
+            path: '/api/admin-auth',
+            ok: true,
+          });
+        }
+        return res.status(200).json({ ok: true });
+      }
+
       if (body.action === 'reset-password') {
         const token = String(body.token || '').trim();
         const password = String(body.password || '');
@@ -206,9 +225,17 @@ export default async function handler(req, res) {
           { _id: admin._id },
           {
             $set: passwordHashUpdate(password),
-            $unset: { reset_token: '', reset_expires: '', password: '' },
+            $inc: { token_version: 1 },
+            $unset: {
+              reset_token: '',
+              reset_expires: '',
+              password: '',
+              locked_until: '',
+              last_failed_login_at: '',
+            },
           }
         );
+        await admins.updateOne({ _id: admin._id }, { $set: { failed_login_count: 0 } });
 
         return res.status(200).json({
           ok: true,
@@ -255,6 +282,18 @@ export default async function handler(req, res) {
         return res.status(201).json({ ok: true, user: toPublicAdmin(doc) });
       }
 
+      if (!isIpAllowedForAdmin(req)) {
+        await writeAuditLog(db, {
+          action: 'admin.login.denied_ip',
+          actor: String(body.email || 'unknown'),
+          ip: getClientIp(req),
+          method: 'POST',
+          path: '/api/admin-auth',
+          ok: false,
+        });
+        return res.status(403).json({ error: 'Admin access denied from this network' });
+      }
+
       const { email, password } = body;
       if (!email || !password) {
         return res.status(400).json({ error: 'Email and password required' });
@@ -265,22 +304,58 @@ export default async function handler(req, res) {
       }
 
       const rl = await rateLimitRequest(db, req, 'admin-login', loginEmailCheck.normalized, {
-        max: 10,
+        max: 5,
         windowMs: 15 * 60 * 1000,
       });
       if (!rl.ok) {
+        await writeAuditLog(db, {
+          action: 'admin.login.rate_limited',
+          actor: loginEmailCheck.normalized,
+          ip: getClientIp(req),
+          method: 'POST',
+          path: '/api/admin-auth',
+          ok: false,
+        });
         return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
       }
 
       const normalizedLogin = loginEmailCheck.normalized;
       const user = await findAdminByEmail(admins, normalizedLogin);
-      if (!user || !verifyAdminPassword(password, user)) {
+
+      if (user && isAdminLocked(user)) {
+        await writeAuditLog(db, {
+          action: 'admin.login.locked',
+          actor: normalizedLogin,
+          ip: getClientIp(req),
+          method: 'POST',
+          path: '/api/admin-auth',
+          ok: false,
+        });
+        return res.status(423).json({
+          error: 'Account temporarily locked after too many failed attempts. Try again later.',
+        });
+      }
+
+      if (!user || !verifyAdminPassword(password, user) || user.disabled === true) {
+        if (user && user.disabled !== true) {
+          await recordAdminLoginFailure(admins, user);
+        }
+        await writeAuditLog(db, {
+          action: 'admin.login.failed',
+          actor: normalizedLogin,
+          ip: getClientIp(req),
+          method: 'POST',
+          path: '/api/admin-auth',
+          ok: false,
+        });
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
       await migrateAdminPasswordIfNeeded(admins, user, password);
+      await clearAdminLoginFailures(admins, user);
 
-      const token = createAdminToken(user.email);
+      const token = createAdminToken(user.email, adminTokenVersion(user));
+      await auditAdmin(db, req, user, 'admin.login.success', { role: user.role });
       return res.status(200).json({
         ok: true,
         token,
@@ -357,10 +432,18 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Nothing to update' });
         }
         updates.updated_at = new Date();
-        await admins.updateOne(
-          { _id: target._id },
-          { $set: updates, $unset: body.password ? { password: '' } : {} }
-        );
+        const updateOps = {
+          $set: updates,
+          $unset: body.password ? { password: '' } : {},
+        };
+        if (body.password) {
+          updateOps.$inc = { token_version: 1 };
+        }
+        await admins.updateOne({ _id: target._id }, updateOps);
+        await auditAdmin(db, req, auth.caller, 'admin.user.update', {
+          target: targetEmail,
+          passwordChanged: Boolean(body.password),
+        });
         const updated = await findAdminByEmail(admins, targetEmail);
         return res.status(200).json({ ok: true, user: toPublicAdmin(updated) });
       }
@@ -379,6 +462,10 @@ export default async function handler(req, res) {
       if (!verifyAdminPassword(currentPassword, auth.caller)) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
+      if (auth.tokenPayload) {
+        await revokeAdminToken(db, auth.tokenPayload);
+      }
+      const bumped = await bumpAdminTokenVersion(admins, auth.caller._id);
       await admins.updateOne(
         { _id: auth.caller._id },
         {
@@ -386,7 +473,14 @@ export default async function handler(req, res) {
           $unset: { password: '' },
         }
       );
-      return res.status(200).json({ ok: true, token: createAdminToken(auth.caller.email) });
+      await auditAdmin(db, req, auth.caller, 'admin.password.change', {});
+      const nextVersion = bumped
+        ? adminTokenVersion(bumped)
+        : adminTokenVersion(auth.caller) + 1;
+      return res.status(200).json({
+        ok: true,
+        token: createAdminToken(auth.caller.email, nextVersion),
+      });
     }
 
     if (req.method === 'DELETE') {
@@ -408,7 +502,9 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'You cannot delete your own account while logged in' });
       }
 
+      await bumpAdminTokenVersion(admins, target._id);
       await admins.deleteOne({ _id: target._id });
+      await auditAdmin(db, req, auth.caller, 'admin.user.delete', { target: targetEmail });
       return res.status(200).json({ ok: true });
     }
 

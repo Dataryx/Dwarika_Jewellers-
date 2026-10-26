@@ -5,9 +5,12 @@ import {
   hashPassword,
   verifyPassword,
 } from './_customerAuth.js';
-import { isProduction } from './_security.js';
+import { getMongoDb } from './_mongo.js';
+import { isIpAllowedForAdmin, isProduction } from './_security.js';
 
-const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+const TOKEN_TTL_MS = Number(process.env.ADMIN_TOKEN_TTL_MS) || 8 * 60 * 60 * 1000; // 8 hours
+const MAX_FAILED_LOGINS = Number(process.env.ADMIN_MAX_FAILED_LOGINS) || 8;
+const LOCKOUT_MS = Number(process.env.ADMIN_LOCKOUT_MS) || 30 * 60 * 1000; // 30 minutes
 
 export const MASTER_EMAIL = 'admin@dwarika.com';
 
@@ -26,10 +29,12 @@ function signPayload(payload) {
   return `${Buffer.from(json, 'utf8').toString('base64url')}.${sig}`;
 }
 
-export function createAdminToken(email) {
+export function createAdminToken(email, tokenVersion = 0) {
   const payload = {
     sub: normalizeEmail(email),
     role: 'admin',
+    tv: Number(tokenVersion) || 0,
+    jti: crypto.randomBytes(16).toString('hex'),
     iat: Date.now(),
     exp: Date.now() + TOKEN_TTL_MS,
   };
@@ -66,6 +71,78 @@ export function verifyAdminToken(token) {
 export function isMasterUser(user) {
   if (!user) return false;
   return user.role === 'master' || normalizeEmail(user.email) === MASTER_EMAIL;
+}
+
+export function adminTokenVersion(user) {
+  return Number(user?.token_version) || 0;
+}
+
+export function isAdminLocked(user) {
+  if (!user?.locked_until) return false;
+  const until =
+    user.locked_until instanceof Date
+      ? user.locked_until.getTime()
+      : Date.parse(user.locked_until);
+  return Number.isFinite(until) && until > Date.now();
+}
+
+export async function recordAdminLoginFailure(admins, user) {
+  if (!user?._id) return;
+  const count = (Number(user.failed_login_count) || 0) + 1;
+  const updates = {
+    failed_login_count: count,
+    last_failed_login_at: new Date(),
+  };
+  if (count >= MAX_FAILED_LOGINS) {
+    updates.locked_until = new Date(Date.now() + LOCKOUT_MS);
+  }
+  await admins.updateOne({ _id: user._id }, { $set: updates });
+}
+
+export async function clearAdminLoginFailures(admins, user) {
+  if (!user?._id) return;
+  await admins.updateOne(
+    { _id: user._id },
+    {
+      $set: { failed_login_count: 0 },
+      $unset: { locked_until: '', last_failed_login_at: '' },
+    }
+  );
+}
+
+/** Invalidate all existing admin Bearer tokens for this user. */
+export async function bumpAdminTokenVersion(admins, userId) {
+  const result = await admins.findOneAndUpdate(
+    { _id: userId },
+    { $inc: { token_version: 1 }, $set: { updated_at: new Date() } },
+    { returnDocument: 'after' }
+  );
+  return result?.value ?? result;
+}
+
+export async function revokeAdminToken(db, payload) {
+  if (!db || !payload?.jti || typeof payload.exp !== 'number') return;
+  try {
+    await db.collection('admin_token_denylist').updateOne(
+      { _id: payload.jti },
+      {
+        $set: {
+          expires_at: new Date(payload.exp),
+          revoked_at: new Date(),
+          sub: String(payload.sub || '').slice(0, 200),
+        },
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[adminAuth] revoke failed:', err instanceof Error ? err.message : err);
+  }
+}
+
+export async function isAdminTokenRevoked(db, jti) {
+  if (!db || !jti) return false;
+  const doc = await db.collection('admin_token_denylist').findOne({ _id: jti });
+  return Boolean(doc);
 }
 
 export async function findAdminByEmail(col, email) {
@@ -117,6 +194,9 @@ export function getAdminBearerToken(req) {
 
 /** Validates signed admin token and loads admin user from MongoDB. */
 export async function requireAdmin(req, adminsCol) {
+  if (!isIpAllowedForAdmin(req)) {
+    return { error: { status: 403, message: 'Admin access denied from this network' } };
+  }
   const token = getAdminBearerToken(req);
   if (!token) {
     return { error: { status: 401, message: 'Admin session required' } };
@@ -125,11 +205,30 @@ export async function requireAdmin(req, adminsCol) {
   if (!payload) {
     return { error: { status: 401, message: 'Invalid or expired admin session' } };
   }
+
+  try {
+    const db = await getMongoDb();
+    if (payload.jti && (await isAdminTokenRevoked(db, payload.jti))) {
+      return { error: { status: 401, message: 'Admin session revoked. Sign in again.' } };
+    }
+  } catch {
+    /* denylist check is best-effort if Mongo briefly unavailable after token verify */
+  }
+
   const caller = await findAdminByEmail(adminsCol, payload.sub);
   if (!caller) {
     return { error: { status: 401, message: 'Invalid admin session' } };
   }
-  return { caller };
+  if (caller.disabled === true) {
+    return { error: { status: 403, message: 'Admin account disabled' } };
+  }
+  if (isAdminLocked(caller)) {
+    return { error: { status: 423, message: 'Admin account temporarily locked. Try again later.' } };
+  }
+  if (Number(payload.tv || 0) !== adminTokenVersion(caller)) {
+    return { error: { status: 401, message: 'Admin session revoked. Sign in again.' } };
+  }
+  return { caller, tokenPayload: payload };
 }
 
 export function toPublicAdmin(doc) {

@@ -11,6 +11,7 @@ import { storefrontUrl } from '../../lib/storefrontUrl';
 
 interface Product {
   id: number;
+  product_id?: string;
   name: string;
   description: string;
   price: number;
@@ -91,8 +92,11 @@ export function AdminProductList() {
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.material?.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch =
+      p.name.toLowerCase().includes(q) ||
+      p.material?.toLowerCase().includes(q) ||
+      p.product_id?.toLowerCase().includes(q);
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
     const matchesStock =
       stockFilter === 'all' ||
@@ -161,7 +165,7 @@ export function AdminProductList() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search by name, material, or Product ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
@@ -206,6 +210,7 @@ export function AdminProductList() {
             <thead>
               <tr className="border-b border-gray-700">
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Product ID</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Product</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Category</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Price</th>
@@ -217,11 +222,11 @@ export function AdminProductList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">Loading...</td>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">Loading...</td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center">
+                  <td colSpan={8} className="py-12 text-center">
                     <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
                     <p className="text-sm text-gray-500">No products found</p>
                   </td>
@@ -239,6 +244,11 @@ export function AdminProductList() {
                       className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                     >
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-400">{sn}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-mono text-violet-300/90">
+                          {product.product_id || '—'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <img
@@ -411,6 +421,11 @@ export function AdminProductList() {
                     )}
                   </div>
 
+                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Product ID</p>
+                    <p className="text-sm font-mono text-violet-300">{viewingProduct.product_id || '—'}</p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
                       <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Category</p>
@@ -514,6 +529,7 @@ export function AdminProductForm() {
   const [originalType, setOriginalType] = useState<string>('both');
   const [apiCategories, setApiCategories] = useState<{ slug: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
+    product_id: '',
     name: '',
     description: '',
     price: '',
@@ -552,6 +568,7 @@ export function AdminProductForm() {
       setAllowTypeChange(false);
       const textOrEmpty = (v: unknown) => (v === undefined || v === null ? '' : String(v));
       setFormData({
+        product_id: textOrEmpty(data.product_id),
         name: data.name,
         description: data.description,
         price: textOrEmpty(data.price),
@@ -621,6 +638,10 @@ export function AdminProductForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.product_id.trim()) {
+      showNotification('Please enter a unique Product ID.');
+      return;
+    }
     if (!formData.image_url.trim()) {
       showNotification('Please add a product image (upload or paste a URL).');
       return;
@@ -635,6 +656,7 @@ export function AdminProductForm() {
 
       const payload = {
         ...formData,
+        product_id: formData.product_id.trim(),
         price: Number(formData.price),
         gold_weight_14k: id
           ? choose(formData.gold_weight_14k, loadedProduct?.gold_weight_14k)
@@ -659,9 +681,11 @@ export function AdminProductForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Failed to save product');
+      const saved = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(saved?.error || 'Failed to save product');
+      }
 
-      const saved = await res.json();
       const savedId = saved?.id ?? Number(id);
       if (!savedId) throw new Error('Saved product ID missing');
 
@@ -669,6 +693,7 @@ export function AdminProductForm() {
       const verifyRes = await adminFetch(`/api/products?id=${savedId}`);
       const verified = await verifyRes.json();
       const verifiedOk =
+        String(verified?.product_id ?? '') === String(payload.product_id ?? '') &&
         String(verified?.name ?? '') === String(payload.name ?? '') &&
         String(verified?.product_type ?? '') === String(payload.product_type ?? '') &&
         Number(verified?.price ?? 0) === Number(payload.price ?? 0) &&
@@ -688,7 +713,7 @@ export function AdminProductForm() {
       navigate('/products');
     } catch (err) {
       console.error('Failed to save product:', err);
-      showNotification('Failed to save product.');
+      showNotification(err instanceof Error ? err.message : 'Failed to save product.');
     } finally {
       setSaving(false);
     }
@@ -721,6 +746,24 @@ export function AdminProductForm() {
         onSubmit={handleSubmit}
         className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-6"
       >
+        <div>
+          <label className="text-sm font-medium text-white mb-2 block">Product ID</label>
+          <input
+            type="text"
+            value={formData.product_id}
+            onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
+            required
+            maxLength={64}
+            placeholder="e.g. DW-RING-001"
+            pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
+            title="Letters, numbers, dots, underscores, and hyphens only"
+            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white font-mono placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Unique code you assign (required). Used in the product table and search.
+          </p>
+        </div>
+
         <div>
           <label className="text-sm font-medium text-white mb-2 block">Product Name</label>
           <input

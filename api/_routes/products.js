@@ -2,6 +2,31 @@ import { getMongoDb, nextSeq, docToJson } from '../_mongo.js';
 import { requireAdmin } from '../_adminAuth.js';
 import { handleApiRequest, apiError, sanitizeAdminImageUrl } from '../_security.js';
 
+/** Admin-set catalog code (unique). Letters, numbers, . _ - ; 1–64 chars. */
+function normalizeProductCode(raw) {
+  const value = String(raw ?? '').trim();
+  if (!value) return { error: 'Product ID is required' };
+  if (value.length > 64) return { error: 'Product ID must be 64 characters or fewer' };
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value)) {
+    return {
+      error: 'Product ID may only use letters, numbers, dots, underscores, and hyphens',
+    };
+  }
+  return { value };
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function findProductByCode(products, productCode, excludeMongoId) {
+  const filter = {
+    product_id: { $regex: `^${escapeRegex(productCode)}$`, $options: 'i' },
+  };
+  if (excludeMongoId != null) filter._id = { $ne: excludeMongoId };
+  return products.findOne(filter);
+}
+
 export default async function handler(req, res) {
   if (
     handleApiRequest(req, res, {
@@ -45,6 +70,11 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = req.body || {};
+      const code = normalizeProductCode(body.product_id);
+      if (code.error) return res.status(400).json({ error: code.error });
+      if (await findProductByCode(products, code.value)) {
+        return res.status(409).json({ error: 'Product ID already exists. Choose a unique ID.' });
+      }
       const imageUrl = sanitizeAdminImageUrl(body.image_url);
       if (body.image_url && imageUrl === null) {
         return res.status(400).json({ error: 'Invalid image URL' });
@@ -52,6 +82,7 @@ export default async function handler(req, res) {
       const newId = await nextSeq('product');
       const doc = {
         _id: newId,
+        product_id: code.value,
         name: String(body.name ?? '').slice(0, 200),
         description: String(body.description ?? '').slice(0, 5000),
         price: Number(body.price) || 0,
@@ -68,7 +99,14 @@ export default async function handler(req, res) {
         featured: Boolean(body.featured),
         created_at: new Date(),
       };
-      await products.insertOne(doc);
+      try {
+        await products.insertOne(doc);
+      } catch (err) {
+        if (err && (err.code === 11000 || String(err.message || '').includes('duplicate'))) {
+          return res.status(409).json({ error: 'Product ID already exists. Choose a unique ID.' });
+        }
+        throw err;
+      }
       return res.status(201).json(docToJson(doc));
     }
 
@@ -93,6 +131,14 @@ export default async function handler(req, res) {
         stock: raw.stock != null ? Math.max(0, numOrUndefined(raw.stock) ?? 0) : undefined,
         featured: raw.featured,
       };
+      if (raw.product_id !== undefined) {
+        const code = normalizeProductCode(raw.product_id);
+        if (code.error) return res.status(400).json({ error: code.error });
+        if (await findProductByCode(products, code.value, productId)) {
+          return res.status(409).json({ error: 'Product ID already exists. Choose a unique ID.' });
+        }
+        $set.product_id = code.value;
+      }
       if (raw.image_url !== undefined) {
         const imageUrl = sanitizeAdminImageUrl(raw.image_url);
         if (raw.image_url && imageUrl === null) {
@@ -105,11 +151,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No fields to update' });
       }
 
-      const r = await products.findOneAndUpdate(
-        { _id: productId },
-        { $set },
-        { returnDocument: 'after' }
-      );
+      let r;
+      try {
+        r = await products.findOneAndUpdate(
+          { _id: productId },
+          { $set },
+          { returnDocument: 'after' }
+        );
+      } catch (err) {
+        if (err && (err.code === 11000 || String(err.message || '').includes('duplicate'))) {
+          return res.status(409).json({ error: 'Product ID already exists. Choose a unique ID.' });
+        }
+        throw err;
+      }
       const doc = r.value ?? r;
       if (!doc) return res.status(404).json({ error: 'Not found' });
       return res.status(200).json(docToJson(doc));

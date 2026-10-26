@@ -1,4 +1,4 @@
-import { apiError } from './_security.js';
+import { apiError, assertProductionConfig, isProduction } from './_security.js';
 
 /** Lazy-load routes so cold start only loads the handler for the current request. */
 const ROUTE_LOADERS = {
@@ -20,33 +20,28 @@ const ROUTE_LOADERS = {
   smtp: () => import('./_routes/smtp.js'),
 };
 
-/** Resolve API segment from Vercel rewrite, catch-all query, or request URL. */
+let productionConfigError = null;
+if (isProduction()) {
+  try {
+    assertProductionConfig();
+  } catch (err) {
+    productionConfigError = err;
+    console.error('[security]', err instanceof Error ? err.message : err);
+  }
+}
+
+/** Resolve API segment from request URL (e.g. /api/products → products). */
 function resolveRouteName(req) {
-  if (req.query?.route) {
-    const segment = String(req.query.route).split('/').filter(Boolean)[0];
-    if (segment) return decodeURIComponent(segment);
-  }
-
-  const pathParam = req.query?.path;
-  if (Array.isArray(pathParam) && pathParam[0]) return pathParam[0];
-  if (typeof pathParam === 'string' && pathParam) {
-    return pathParam.split('/').filter(Boolean)[0];
-  }
-
   const raw = req.url || '';
   const pathname = raw.includes('://') ? new URL(raw).pathname : raw.split('?')[0];
   const parts = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
-  if (parts[0] === 'handler') return parts[1] || null;
   return parts[0] || null;
 }
 
 function buildForwardedReq(req) {
-  const query = { ...(req.query || {}) };
-  delete query.route;
-  delete query.path;
   return {
     ...req,
-    query,
+    query: { ...(req.query || {}) },
     headers: req.headers || {},
     method: req.method || 'GET',
     body: req.body,
@@ -61,11 +56,15 @@ function handlePing(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   return res.status(200).json({
-    ok: true,
+    ok: !productionConfigError,
     mongoUriConfigured: Boolean(process.env.MONGODB_URI?.trim()),
+    authSecretsConfigured: Boolean(
+      process.env.CUSTOMER_AUTH_SECRET?.trim() && process.env.ADMIN_AUTH_SECRET?.trim()
+    ),
+    allowedOriginsConfigured: Boolean(process.env.ALLOWED_ORIGINS?.trim()),
     database: process.env.MONGODB_DB_NAME?.trim() || 'lumiere',
-    vercelEnv: process.env.VERCEL_ENV || null,
     nodeEnv: process.env.NODE_ENV || null,
+    configError: productionConfigError instanceof Error ? productionConfigError.message : null,
   });
 }
 
@@ -78,6 +77,10 @@ export default async function handler(req, res) {
 
     if (name === 'ping') {
       return handlePing(req, res);
+    }
+
+    if (productionConfigError && name !== 'health') {
+      return apiError(res, productionConfigError, 503);
     }
 
     const loadRoute = ROUTE_LOADERS[name];

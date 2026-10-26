@@ -98,7 +98,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       const res = await adminFetch('/api/admin-auth?me=true');
       const data = await res.json();
       if (!res.ok) {
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 423) {
           clearAdminSession();
           setEmail(null);
         }
@@ -132,8 +132,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAdminProfile]);
 
   const logout = () => {
-    clearAdminSession();
-    window.location.href = '/login';
+    void adminFetch('/api/admin-auth', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'logout' }),
+    }).finally(() => {
+      clearAdminSession();
+      window.location.href = '/login';
+    });
   };
 
   const value: AdminAuthContextValue = {

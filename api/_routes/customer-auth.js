@@ -4,6 +4,7 @@ import {
   hashPassword,
   verifyPassword,
   createCustomerToken,
+  customerTokenVersion,
   verifyCustomerToken,
   getBearerToken,
   toPublicCustomer,
@@ -53,8 +54,13 @@ async function issueSession(col, doc) {
     throw err;
   }
   await col.updateOne({ _id: doc._id }, { $set: { last_login: new Date() } });
-  const token = createCustomerToken(doc.email);
+  const token = createCustomerToken(doc.email, customerTokenVersion(doc));
   return { token, user: toPublicCustomer(doc) };
+}
+
+function sessionMatches(doc, payload) {
+  if (!doc || !payload) return false;
+  return Number(payload.tv || 0) === customerTokenVersion(doc);
 }
 
 async function sendCustomerVerificationEmail(db, doc, origin) {
@@ -103,7 +109,9 @@ export default async function handler(req, res) {
       const payload = verifyCustomerToken(token);
       if (!payload) return res.status(401).json({ error: 'Not authenticated' });
       const doc = await findCustomer(col, payload.sub);
-      if (!doc) return res.status(401).json({ error: 'Account not found' });
+      if (!doc || !sessionMatches(doc, payload)) {
+        return res.status(401).json({ error: 'Account not found' });
+      }
       if (!isEmailVerified(doc)) {
         return res.status(403).json({
           error: 'Please confirm your email before continuing.',
@@ -187,7 +195,7 @@ export default async function handler(req, res) {
         const email = emailCheck.normalized;
 
         const rl = await rateLimitRequest(db, req, 'customer-login', email, {
-          max: 10,
+          max: 8,
           windowMs: 15 * 60 * 1000,
         });
         if (!rl.ok) {
@@ -239,7 +247,7 @@ export default async function handler(req, res) {
         );
 
         const updated = await findCustomer(col, doc._id);
-        const sessionToken = createCustomerToken(updated.email);
+        const sessionToken = createCustomerToken(updated.email, customerTokenVersion(updated));
         return res.status(200).json({
           ok: true,
           token: sessionToken,
@@ -342,6 +350,7 @@ export default async function handler(req, res) {
           { _id: doc._id },
           {
             $set: { password_hash: hashPassword(password), email_verified: true },
+            $inc: { token_version: 1 },
             $unset: { reset_token: '', reset_expires: '', verify_token: '', verify_expires: '' },
           }
         );
@@ -358,7 +367,9 @@ export default async function handler(req, res) {
       if (!payload) return res.status(401).json({ error: 'Not authenticated' });
 
       const doc = await findCustomer(col, payload.sub);
-      if (!doc) return res.status(401).json({ error: 'Account not found' });
+      if (!doc || !sessionMatches(doc, payload)) {
+        return res.status(401).json({ error: 'Account not found' });
+      }
       if (!isEmailVerified(doc)) {
         return res.status(403).json({
           error: 'Please confirm your email before updating your profile.',

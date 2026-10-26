@@ -26,7 +26,7 @@ function wrapMongoError(err) {
   }
   if (/timed out|Server selection|ECONNREFUSED|ENOTFOUND|network/i.test(msg)) {
     return new Error(
-      'Cannot reach MongoDB. In Atlas → Network Access, allow 0.0.0.0/0 (or Vercel IPs), then redeploy.'
+      'Cannot reach MongoDB. In Atlas → Network Access, allow your VPS IP, then restart the app.'
     );
   }
   return err;
@@ -35,7 +35,7 @@ function wrapMongoError(err) {
 async function connectClient() {
   const uri = process.env.MONGODB_URI?.trim();
   if (!uri) {
-    throw new Error('MONGODB_URI is not set (add it to .env / Vercel env)');
+    throw new Error('MONGODB_URI is not set (add it to the server .env)');
   }
 
   const client = new MongoClient(uri, {
