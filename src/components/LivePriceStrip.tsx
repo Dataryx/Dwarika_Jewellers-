@@ -28,17 +28,22 @@ export default function LivePriceStrip() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    apiFetch('/api/live-prices')
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.error || !json?.rates) return;
-        setData(json);
-      })
-      .catch(() => {});
+    const load = () => {
+      apiFetch('/api/live-prices')
+        .then((r) => r.json())
+        .then((json) => {
+          if (json?.error || !json?.rates) return;
+          setData(json);
+        })
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60 * 60 * 1000); // every hour
+    return () => clearInterval(id);
   }, []);
 
   const itemClass =
-    'flex items-center gap-1.5 px-2.5 py-1.5 bg-white/55 border border-gray-200/60 rounded-lg text-[11px] sm:text-xs text-gray-700 shrink-0';
+    'flex items-center gap-1.5 px-2.5 py-1.5 bg-white/55 border border-gray-200/60 rounded-lg text-[11px] sm:text-xs text-gray-700 shrink-0 whitespace-nowrap';
 
   const tickerItems = useMemo(() => {
     if (!data?.rates) return [];
@@ -72,39 +77,34 @@ export default function LivePriceStrip() {
     return <Gem className="w-3 h-3 text-[#c9a962] shrink-0" />;
   };
 
+  const loop = [...tickerItems, ...tickerItems];
+
   return (
     <div className="bg-transparent border-y border-gray-200/60">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-2">
-        {/* Mobile: scrollable chips */}
-        <div className="md:hidden overflow-x-auto -mx-4 px-4 pb-1">
-          <div className="flex gap-2 w-max max-w-none">
-            {tickerItems.map((label) => (
-              <div key={label} className={itemClass}>
-                {iconFor(label)}
-                <span className="font-medium text-gray-900">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Tablet+ : animated ticker */}
         <div
-          className="hidden md:block relative overflow-hidden rounded-lg border border-gray-200/60 bg-white/35 backdrop-blur-[2px] px-1.5 py-1"
+          className="relative overflow-hidden rounded-lg border border-gray-200/60 bg-white/35 backdrop-blur-[2px] px-1.5 py-1 touch-pan-y"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
+          onTouchStart={() => setPaused(true)}
+          onTouchEnd={() => setPaused(false)}
         >
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white/60 to-transparent z-10" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white/60 to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-5 sm:w-6 bg-gradient-to-r from-white/70 to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-5 sm:w-6 bg-gradient-to-l from-white/70 to-transparent z-10" />
 
           <motion.div
-            className="flex gap-3 w-max"
-            animate={paused ? { x: undefined } : { x: ['0%', '-50%'] }}
-            transition={{ repeat: Infinity, duration: 36, ease: 'linear' }}
+            className="flex gap-2 sm:gap-3 w-max will-change-transform"
+            animate={paused ? undefined : { x: ['0%', '-50%'] }}
+            transition={
+              paused
+                ? { duration: 0 }
+                : { repeat: Infinity, duration: 28, ease: 'linear' }
+            }
           >
-            {[...tickerItems, ...tickerItems].map((label, i) => (
+            {loop.map((label, i) => (
               <div key={`${label}-${i}`} className={itemClass}>
                 {iconFor(label)}
-                <span className="font-medium text-gray-900 whitespace-nowrap">{label}</span>
+                <span className="font-medium text-gray-900">{label}</span>
               </div>
             ))}
           </motion.div>

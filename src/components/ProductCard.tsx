@@ -15,6 +15,12 @@ interface ProductCardProps {
   index?: number;
 }
 
+function stockLabel(stock: number) {
+  if (stock <= 0) return { text: 'Out of Stock', className: 'bg-gray-900/90 text-white' };
+  if (stock <= 5) return { text: 'Low Stock', className: 'bg-[#c9a962]/95 text-white' };
+  return null;
+}
+
 export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -23,11 +29,14 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const { addItem, removeItem, isInWishlist } = useWishlist();
   const liked = isInWishlist(product.id);
   const displayPrice = resolveProductPrice(product, settings);
+  const stock = Number(product.stock ?? 0);
+  const outOfStock = stock <= 0;
+  const badge = stockLabel(stock);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (adding) return;
+    if (adding || outOfStock) return;
     setAdding(true);
 
     try {
@@ -36,15 +45,19 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         headers: cartHeaders(),
         body: JSON.stringify({ product_id: product.id, quantity: 1 }),
       });
-      
+
       if (res.ok) {
         const cartRes = await apiFetch('/api/cart', { headers: cartHeaders() });
         const cartData = await cartRes.json();
         setCart(cartData);
         showNotification(`${product.name} added to bag`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showNotification(data.error || 'Could not add to bag', 'error');
       }
     } catch (err) {
       console.error('Failed to add to cart:', err);
+      showNotification('Could not add to bag', 'error');
     } finally {
       setAdding(false);
     }
@@ -73,15 +86,43 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
     >
       <Link to={`/product/${product.id}`}>
         <div className="relative aspect-[4/5] overflow-hidden bg-[#faf9f7]">
-          <motion.img src={product.image_url} alt={product.name} className="w-full h-full object-cover" animate={{ scale: isHovered ? 1.05 : 1 }} transition={{ duration: 0.7 }} />
-          
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }} className="absolute bottom-4 left-4 right-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-            <button onClick={handleAddToCart} disabled={adding} className="w-full py-3 bg-white/95 backdrop-blur-sm text-gray-900 text-xs font-medium tracking-[0.1em] uppercase hover:bg-[#c9a962] hover:text-white transition-colors disabled:opacity-50">
-              {adding ? 'Adding...' : 'Add to Bag'}
+          <motion.img
+            src={product.image_url}
+            alt={product.name}
+            className={`w-full h-full object-cover ${outOfStock ? 'opacity-70' : ''}`}
+            animate={{ scale: isHovered ? 1.05 : 1 }}
+            transition={{ duration: 0.7 }}
+          />
+
+          {badge && (
+            <span
+              className={`absolute top-3 left-3 z-10 px-2.5 py-1 text-[10px] font-medium tracking-[0.12em] uppercase ${badge.className}`}
+            >
+              {badge.text}
+            </span>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 20 }}
+            className="absolute bottom-4 left-4 right-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+          >
+            <button
+              onClick={handleAddToCart}
+              disabled={adding || outOfStock}
+              className="w-full py-3 bg-white/95 backdrop-blur-sm text-gray-900 text-xs font-medium tracking-[0.1em] uppercase hover:bg-[#c9a962] hover:text-white transition-colors disabled:opacity-50 disabled:hover:bg-white/95 disabled:hover:text-gray-900"
+            >
+              {outOfStock ? 'Out of Stock' : adding ? 'Adding...' : 'Add to Bag'}
             </button>
           </motion.div>
 
-          <motion.button initial={{ opacity: 0 }} animate={{ opacity: isHovered ? 1 : 0 }} whileTap={{ scale: 0.8 }} onClick={handleWishlist} className="absolute top-4 right-4 w-9 h-9 bg-white/95 backdrop-blur-sm flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isHovered ? 1 : 0 }}
+            whileTap={{ scale: 0.8 }}
+            onClick={handleWishlist}
+            className="absolute top-4 right-4 w-9 h-9 bg-white/95 backdrop-blur-sm flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+          >
             <Heart className={`w-4 h-4 transition-colors ${liked ? 'fill-[#c9a962] text-[#c9a962]' : 'text-gray-600'}`} />
           </motion.button>
         </div>
@@ -89,7 +130,15 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         <div className="mt-4">
           <h3 className="text-sm font-medium text-gray-900 group-hover:text-[#c9a962] transition-colors">{product.name}</h3>
           <p className="text-xs text-gray-400 mt-1">{product.material}</p>
-          <p className="text-sm font-medium text-gray-900 mt-2">रु {displayPrice.toLocaleString('en-IN')}</p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-gray-900">रु {displayPrice.toLocaleString('en-IN')}</p>
+            {stock > 0 && stock <= 5 && (
+              <p className="text-[11px] text-[#c9a962] font-medium whitespace-nowrap">{stock} left</p>
+            )}
+            {outOfStock && (
+              <p className="text-[11px] text-gray-400 font-medium whitespace-nowrap">Unavailable</p>
+            )}
+          </div>
         </div>
       </Link>
     </motion.div>

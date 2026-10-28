@@ -5,11 +5,38 @@ import {
   sendMailMessage,
   formatSmtpError,
 } from '../_smtp.js';
-import { buildOrderReceiptEmailHtml } from '../_orderReceiptEmail.js';
 import { requireAdmin } from '../_adminAuth.js';
 import { handleApiRequest, apiError } from '../_security.js';
 import { validateEmailAddress } from '../../shared/emailValidation.mjs';
 import { getMongoDb } from '../_mongo.js';
+
+function buildSmtpTestEmailHtml(storeName, target) {
+  const name = String(storeName || 'Dwarika').replace(/</g, '&lt;');
+  const to = String(target || '').replace(/</g, '&lt;');
+  return `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
+    <tr>
+      <td style="padding:28px 32px;">
+        <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#7c3aed;font-weight:700;">SMTP configuration test</p>
+        <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;">Connection successful</h1>
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#475569;">
+          This message was sent only to verify your ${name} SMTP settings.
+          It is <strong>not</strong> an order confirmation.
+        </p>
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#475569;">
+          Test recipient: <strong>${to}</strong>
+        </p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#64748b;">
+          Real order confirmation emails always go to each customer's checkout email address — never to this test recipient.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
 
 export default async function handler(req, res) {
   if (
@@ -53,7 +80,13 @@ export default async function handler(req, res) {
       const smtpOverride =
         config && typeof config === 'object'
           ? {
-              ...config,
+              host: config.host,
+              port: config.port,
+              security: config.security,
+              username: config.username,
+              fromEmail: config.fromEmail,
+              fromName: config.fromName,
+              replyTo: config.replyTo,
               password: config.password || stored.password,
               enabled: true,
             }
@@ -61,41 +94,24 @@ export default async function handler(req, res) {
 
       const smtp = { ...stored, ...smtpOverride };
       const storeName = smtp.fromName || 'Dwarika';
-      const sampleOrder = {
-        id: 1001,
-        order_uid: 'DWR-SAMPLE-000001',
-        customer_name: 'Sample Customer',
-        customer_email: target,
-        total: 125000,
-        status: 'pending',
-        payment_method: 'Cash on Delivery',
-        created_at: new Date().toISOString(),
-        shipping_address: {
-          phone: '+977 9800000000',
-          address: '123 Sample Street',
-          city: 'Kathmandu',
-          state: 'Bagmati',
-          zip: '44600',
-        },
-        items: [
-          {
-            quantity: 1,
-            price: 125000,
-            product: { name: 'Gold Ring - Sample Item' },
-          },
-        ],
-      };
 
       await sendMailMessage({
         to: target,
-        subject: `[Test] ${storeName} SMTP configuration`,
-        html: buildOrderReceiptEmailHtml(sampleOrder, storeName),
-        text: 'This is a test receipt email from your Dwarika admin SMTP settings.',
+        subject: `[SMTP Test] ${storeName} — configuration check only`,
+        html: buildSmtpTestEmailHtml(storeName, target),
+        text:
+          `SMTP configuration test for ${storeName}.\n\n` +
+          `This is NOT an order confirmation.\n` +
+          `Test recipient: ${target}\n\n` +
+          `Real order emails always go to each customer's checkout email.`,
         smtpOverride,
         allowDisabled: true,
       });
 
-      return res.status(200).json({ ok: true, message: 'Test email sent successfully.' });
+      return res.status(200).json({
+        ok: true,
+        message: 'Test email sent. Order confirmations will still go to each customer’s email.',
+      });
     }
 
     res.status(405).json({ error: 'Method not allowed' });

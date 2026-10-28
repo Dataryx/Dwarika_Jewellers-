@@ -111,7 +111,7 @@ export default function AdminSettings() {
   if (loading) {
     return (
       <AdminPage>
-        <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
+        <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
           <Loader2 className="w-5 h-5 animate-spin" /> Loading settings…
         </div>
       </AdminPage>
@@ -121,18 +121,18 @@ export default function AdminSettings() {
   return (
     <AdminPage>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h3 className="text-xl font-semibold text-white">Settings</h3>
-        <p className="text-sm text-gray-500 mt-1">Manage shipping, payments, and notifications</p>
+        <h3 className="text-xl font-semibold text-slate-900">Settings</h3>
+        <p className="text-sm text-slate-500 mt-1">Manage shipping, payments, and notifications</p>
       </motion.div>
 
       {saved && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2"
+          className="p-4 bg-emerald-50 border border-emerald-500/20 rounded-xl flex items-center gap-2"
         >
-          <Check className="w-4 h-4 text-emerald-400" />
-          <p className="text-emerald-400 text-sm">Settings saved successfully!</p>
+          <Check className="w-4 h-4 text-emerald-600" />
+          <p className="text-emerald-600 text-sm">Settings saved successfully!</p>
         </motion.div>
       )}
 
@@ -140,9 +140,9 @@ export default function AdminSettings() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+          className="p-4 bg-red-50 border border-red-500/20 rounded-xl"
         >
-          <p className="text-red-400 text-sm">{error}</p>
+          <p className="text-red-600 text-sm">{error}</p>
         </motion.div>
       )}
 
@@ -161,8 +161,8 @@ export default function AdminSettings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border ${
                 activeTab === tab.id
-                  ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
-                  : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
+                  ? 'bg-violet-50 text-violet-600 border-violet-200'
+                  : 'bg-white text-slate-400 border-slate-200 hover:text-slate-700'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -178,7 +178,7 @@ export default function AdminSettings() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-6"
+        className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6"
       >
         {activeTab === 'pricing' && <PricingSettings settings={settings} update={update} sidebarOpen={sidebarOpen} />}
         {activeTab === 'shipping' && <ShippingSettings settings={settings} update={update} sidebarOpen={sidebarOpen} />}
@@ -187,11 +187,11 @@ export default function AdminSettings() {
         {activeTab === 'security' && <SecuritySettings sidebarOpen={sidebarOpen} />}
 
         {activeTab !== 'security' && (
-          <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
+          <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
             >
               {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
@@ -204,8 +204,8 @@ export default function AdminSettings() {
 }
 
 const inputClass =
-  'w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
-const labelClass = 'text-sm font-medium text-white mb-2 block';
+  'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all';
+const labelClass = 'text-sm font-medium text-slate-900 mb-2 block';
 
 type SettingsProps = {
   settings: StoreSettings;
@@ -224,8 +224,8 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
           onClick={() => setPricingTab('gold')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
             pricingTab === 'gold'
-              ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
-              : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
+              ? 'bg-violet-50 text-violet-600 border-violet-200'
+              : 'bg-white text-slate-400 border-slate-200 hover:text-slate-700'
           }`}
         >
           Gold
@@ -234,8 +234,8 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
           onClick={() => setPricingTab('diamond')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
             pricingTab === 'diamond'
-              ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
-              : 'bg-gray-800/50 text-gray-400 border-gray-700 hover:text-gray-300'
+              ? 'bg-violet-50 text-violet-600 border-violet-200'
+              : 'bg-white text-slate-400 border-slate-200 hover:text-slate-700'
           }`}
         >
           Diamond
@@ -253,7 +253,7 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
               onChange={(e) => update('goldRatePerGram', Number(e.target.value))}
               className={inputClass}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Per tola: रु {Math.round(settings.goldRatePerGram * settings.gramsPerTola).toLocaleString('en-IN')} - homepage ticker & product pricing
             </p>
           </div>
@@ -266,7 +266,7 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
               onChange={(e) => update('silverRatePerGram', Number(e.target.value))}
               className={inputClass}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Per tola: रु {Math.round(settings.silverRatePerGram * settings.gramsPerTola).toLocaleString('en-IN')}
             </p>
           </div>
@@ -304,7 +304,7 @@ function PricingSettings({ settings, update, sidebarOpen = true }: SettingsProps
               onChange={(e) => update('diamondRatePerCarat', Number(e.target.value))}
               className={inputClass}
             />
-            <p className="text-xs text-gray-500 mt-1">Used for dynamic diamond pricing across storefront</p>
+            <p className="text-xs text-slate-500 mt-1">Used for dynamic diamond pricing across storefront</p>
           </div>
         </div>
       )}
@@ -326,7 +326,7 @@ function ShippingSettings({ settings, update, sidebarOpen = true }: SettingsProp
             onChange={(e) => update('freeShippingThreshold', Number(e.target.value))}
             className={inputClass}
           />
-          <p className="text-xs text-gray-500 mt-1">Orders above this amount get free shipping</p>
+          <p className="text-xs text-slate-500 mt-1">Orders above this amount get free shipping</p>
         </div>
         <div>
           <label className={labelClass}>Standard Shipping Rate (रु)</label>
@@ -370,7 +370,7 @@ function ShippingSettings({ settings, update, sidebarOpen = true }: SettingsProp
             onChange={(e) => update('taxRate', Number(e.target.value))}
             className={inputClass}
           />
-          <p className="text-xs text-gray-500 mt-1">Applied to all orders at checkout</p>
+          <p className="text-xs text-slate-500 mt-1">Applied to all orders at checkout</p>
         </div>
       </div>
     </div>
@@ -410,9 +410,9 @@ function PaymentSettings({ settings, update }: SettingsProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-slate-500">
         Toggle payment methods on or off. Only enabled methods appear on checkout. Currently only{' '}
-        <span className="text-gray-300">Cash on Delivery</span> can complete an order - other methods are shown as coming soon.
+        <span className="text-slate-600">Cash on Delivery</span> can complete an order - other methods are shown as coming soon.
       </p>
 
       {/* Add new method */}
@@ -429,7 +429,7 @@ function PaymentSettings({ settings, update }: SettingsProps) {
           type="button"
           onClick={addMethod}
           disabled={!newMethod.trim()}
-          className="px-4 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-40 shrink-0"
+          className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-40 shrink-0"
         >
           + Add
         </button>
@@ -439,25 +439,25 @@ function PaymentSettings({ settings, update }: SettingsProps) {
       {Object.entries(settings.paymentMethods).map(([method, enabled]) => (
         <div
           key={method}
-          className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl hover:bg-gray-800/50 transition-colors"
+          className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-white transition-colors"
         >
           <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-gray-400" />
+            <CreditCard className="w-5 h-5 text-slate-400" />
             <div>
-              <span className="text-sm text-white">{method}</span>
+              <span className="text-sm text-slate-900">{method}</span>
               {descriptions[method] && (
-                <p className="text-xs text-gray-500 mt-0.5">{descriptions[method]}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{descriptions[method]}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`text-xs font-medium ${enabled ? 'text-emerald-400' : 'text-gray-500'}`}>
+            <span className={`text-xs font-medium ${enabled ? 'text-emerald-600' : 'text-slate-500'}`}>
               {enabled ? 'Visible' : 'Hidden'}
             </span>
             <button
               type="button"
               onClick={() => toggle(method)}
-              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${enabled ? 'bg-violet-500' : 'bg-gray-700'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${enabled ? 'bg-violet-500' : 'bg-slate-200'}`}
             >
               <span
                 className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${enabled ? 'left-6' : 'left-1'}`}
@@ -466,7 +466,7 @@ function PaymentSettings({ settings, update }: SettingsProps) {
             <button
               type="button"
               onClick={() => removeMethod(method)}
-              className="text-gray-600 hover:text-red-400 transition-colors ml-1"
+              className="text-slate-600 hover:text-red-600 transition-colors ml-1"
               title="Remove method"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -500,18 +500,18 @@ function NotificationSettings({ settings, update }: SettingsProps) {
       {Object.entries(settings.notifications).map(([key, value]) => (
         <label
           key={key}
-          className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl cursor-pointer hover:bg-gray-800/50 transition-colors"
+          className="flex items-center justify-between p-4 bg-slate-50 rounded-xl cursor-pointer hover:bg-white transition-colors"
         >
           <div>
-            <p className="text-sm text-white capitalize">
+            <p className="text-sm text-slate-900 capitalize">
               {key.replace(/([A-Z])/g, ' $1').trim()}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">{descriptions[key]}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{descriptions[key]}</p>
           </div>
           <button
             type="button"
             onClick={() => toggle(key)}
-            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${value ? 'bg-violet-500' : 'bg-gray-700'}`}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${value ? 'bg-violet-500' : 'bg-slate-200'}`}
           >
             <span
               className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${value ? 'left-6' : 'left-1'}`}
@@ -575,8 +575,8 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
         <div
           className={`p-3 rounded-lg text-sm ${
             msg.type === 'ok'
-              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
+              ? 'bg-emerald-50 border border-emerald-500/20 text-emerald-600'
+              : 'bg-red-50 border border-red-500/20 text-red-600'
           }`}
         >
           {msg.text}
@@ -590,7 +590,7 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
             value={currentPw}
             onChange={(e) => setCurrentPw(e.target.value)}
             placeholder="••••••••"
-            className={`${inputClass} placeholder-gray-500`}
+            className={`${inputClass} placeholder-slate-400`}
           />
         </div>
         <div>
@@ -600,9 +600,9 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
             placeholder="••••••••"
-            className={`${inputClass} placeholder-gray-500`}
+            className={`${inputClass} placeholder-slate-400`}
           />
-          <p className="text-xs text-gray-500 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
+          <p className="text-xs text-slate-500 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
         </div>
         <div>
           <label className={labelClass}>Confirm Password</label>
@@ -611,15 +611,15 @@ function SecuritySettings({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
             value={confirmPw}
             onChange={(e) => setConfirmPw(e.target.value)}
             placeholder="••••••••"
-            className={`${inputClass} placeholder-gray-500`}
+            className={`${inputClass} placeholder-slate-400`}
           />
         </div>
       </div>
-      <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
+      <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
         <button
           onClick={handlePasswordChange}
           disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
         >
           <Shield className="w-4 h-4" />
           {saving ? 'Updating...' : 'Update Password'}

@@ -304,8 +304,8 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-950 overflow-hidden">
-      {/* Sidebar */}
+    <div className="admin-app flex h-screen overflow-hidden">
+      {/* Sidebar — soft violet panel, distinct from white content */}
       <AnimatePresence>
         {showSidebar && (
           <motion.aside
@@ -313,10 +313,10 @@ export default function AdminLayout() {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed lg:relative z-50 w-64 h-screen bg-gray-900 border-r border-gray-800 flex flex-col shrink-0"
+            className="admin-sidebar fixed lg:relative z-50 w-64 h-screen border-r flex flex-col shrink-0"
           >
             {/* Logo */}
-            <div className="h-20 flex items-center justify-between px-5 border-b border-gray-800">
+            <div className="admin-sidebar-divider h-20 flex items-center justify-between px-5 border-b">
               <Link to="/" className="flex items-center gap-2.5 group min-w-0" onClick={() => setMobileMenuOpen(false)}>
                 <img src="/favicon.svg?v=5" alt="Dwarika" className="w-10 h-10 shrink-0" />
                 <BrandWordmark size="nav" />
@@ -324,7 +324,7 @@ export default function AdminLayout() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors shrink-0"
+                className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/60 text-slate-500 transition-colors shrink-0"
                 aria-label="Close menu"
               >
                 <X className="w-4 h-4" />
@@ -347,23 +347,32 @@ export default function AdminLayout() {
                     {active && (
                       <motion.div
                         layoutId="activeNav"
-                        className="absolute inset-0 bg-gray-800/80 rounded-xl"
+                        className="admin-nav-active absolute inset-0 rounded-xl"
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                       />
                     )}
-                    <span className={`relative z-10 flex items-center w-full ${active ? 'text-violet-500' : 'text-gray-400 group-hover:text-gray-200'}`}>
-                      <Icon className="w-5 h-5 mr-3" />
+                    <span
+                      className={`relative z-10 flex items-center w-full ${
+                        active
+                          ? 'text-violet-700'
+                          : 'text-slate-600 group-hover:text-slate-900'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 mr-3 ${active ? 'text-violet-600' : 'text-slate-500 group-hover:text-slate-700'}`} />
                       {item.name}
                       {active && (
                         <motion.span
                           layoutId="activeChevron"
-                          className="ml-auto text-violet-500 text-xs"
+                          className="ml-auto text-violet-600 text-xs"
                           transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                         >
                           ›
                         </motion.span>
                       )}
                     </span>
+                    {!active && (
+                      <span className="pointer-events-none absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity bg-white/55" />
+                    )}
                   </NavLink>
                 );
               })}
@@ -373,9 +382,9 @@ export default function AdminLayout() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--admin-canvas)]">
         {/* Top Bar */}
-        <header className="h-16 bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 flex items-center justify-between px-4 lg:px-6 shrink-0 sticky top-0 z-20">
+        <header className="h-16 bg-white/95 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -386,18 +395,18 @@ export default function AdminLayout() {
                   setMobileMenuOpen((open) => !open);
                 }
               }}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-50 text-slate-500 hover:text-violet-700 transition-colors"
               aria-label={showSidebar ? 'Close menu' : 'Open menu'}
             >
               {showSidebar ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
-            <h2 className="text-base sm:text-lg font-semibold text-white truncate max-w-[7rem] sm:max-w-none">{currentPageName}</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate max-w-[7rem] sm:max-w-none">{currentPageName}</h2>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Search - desktop */}
             <div className="relative hidden md:block" ref={searchRef}>
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search products, orders…"
@@ -418,10 +427,10 @@ export default function AdminLayout() {
                     setTopSearch('');
                   }
                 }}
-                className="w-64 bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                className="w-64 bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
               />
               {showSearchResults && topSearch.trim() && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
                   {products
                     .filter((p: any) => p.name?.toLowerCase().includes(topSearch.toLowerCase()))
                     .slice(0, 5)
@@ -429,9 +438,9 @@ export default function AdminLayout() {
                       <button
                         key={p.id}
                         onClick={() => { navigate(`/products/edit/${p.id}`); setShowSearchResults(false); setTopSearch(''); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 flex items-center gap-2"
                       >
-                        <Package className="w-3.5 h-3.5 text-gray-500" />
+                        <Package className="w-3.5 h-3.5 text-slate-400" />
                         {p.name}
                       </button>
                     ))}
@@ -442,15 +451,15 @@ export default function AdminLayout() {
                       <button
                         key={o.id}
                         onClick={() => { navigate('/orders'); setShowSearchResults(false); setTopSearch(''); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 flex items-center gap-2"
                       >
-                        <ShoppingCart className="w-3.5 h-3.5 text-gray-500" />
+                        <ShoppingCart className="w-3.5 h-3.5 text-slate-400" />
                         Order {displayOrderId(o)} - {o.customer_name}
                       </button>
                     ))}
                   {products.filter((p: any) => p.name?.toLowerCase().includes(topSearch.toLowerCase())).length === 0 &&
                    orders.filter((o: any) => String(o.id).includes(topSearch) || o.customer_name?.toLowerCase().includes(topSearch.toLowerCase())).length === 0 && (
-                    <div className="px-4 py-3 text-sm text-gray-500">No results found</div>
+                    <div className="px-4 py-3 text-sm text-slate-500">No results found</div>
                   )}
                 </div>
               )}
@@ -459,7 +468,7 @@ export default function AdminLayout() {
             <button
               type="button"
               onClick={() => navigate('/products')}
-              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-violet-50 text-slate-500 hover:text-violet-700 transition-colors"
               aria-label="Search products"
             >
               <Search className="w-4 h-4" />
@@ -469,7 +478,7 @@ export default function AdminLayout() {
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+                className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-violet-50 text-slate-500 hover:text-violet-700 transition-colors"
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotifications.length > 0 ? (
@@ -477,33 +486,33 @@ export default function AdminLayout() {
                 ) : null}
               </button>
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-1 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
-                  <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-white">Notifications</p>
+                <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-900">Notifications</p>
                     {unreadNotifications.length > 0 && (
                       <button
                         type="button"
                         onClick={markAllNotificationsRead}
-                        className="text-xs font-medium text-violet-400 hover:text-violet-300 whitespace-nowrap"
+                        className="text-xs font-medium text-violet-600 hover:text-violet-700 whitespace-nowrap"
                       >
                         Mark all as read
                       </button>
                     )}
                   </div>
                   {unreadNotifications.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-sm text-gray-500">All caught up!</div>
+                    <div className="px-4 py-6 text-center text-sm text-slate-500">All caught up!</div>
                   ) : (
                     <div className="py-1">
                       {unreadNotifications.map((item) => (
-                        <div key={item.id} className="px-4 py-3 hover:bg-gray-700/30 flex items-start gap-3">
+                        <div key={item.id} className="px-4 py-3 hover:bg-violet-50 flex items-start gap-3">
                           {item.icon === 'stock' ? (
-                            <AlertTriangle className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+                            <AlertTriangle className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
                           ) : (
-                            <ShoppingCart className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                            <ShoppingCart className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                           )}
                           <div>
-                            <p className="text-sm text-white">{item.title}</p>
-                            <p className="text-xs text-gray-500">{item.detail}</p>
+                            <p className="text-sm text-slate-900">{item.title}</p>
+                            <p className="text-xs text-slate-500">{item.detail}</p>
                           </div>
                         </div>
                       ))}
@@ -525,8 +534,8 @@ export default function AdminLayout() {
                     return !open;
                   });
                 }}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors ${
-                  profileMenuOpen ? 'text-violet-400' : 'text-gray-400 hover:text-violet-400'
+                className={`w-9 h-9 flex items-center justify-center rounded-lg hover:bg-violet-50 transition-colors ${
+                  profileMenuOpen ? 'text-violet-600' : 'text-slate-500 hover:text-violet-700'
                 }`}
                 aria-label="Admin profile menu"
                 aria-expanded={profileMenuOpen}
@@ -541,17 +550,17 @@ export default function AdminLayout() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 8 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 py-2 overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-2 overflow-hidden"
                   >
-                    <div className="px-4 py-3 border-b border-gray-700">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Signed in as</p>
-                      <p className="text-sm font-semibold text-white truncate">{name}</p>
-                      <p className="text-xs text-gray-500 truncate mt-0.5">{email}</p>
+                    <div className="px-4 py-3 border-b border-slate-200">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Signed in as</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate">{name}</p>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{email}</p>
                       <span
                         className={`inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider border ${
                           role === 'master'
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-gray-700/50 text-gray-400 border-gray-600/30'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
                         }`}
                       >
                         {role === 'master' && <Shield className="w-3 h-3" />}
@@ -564,9 +573,9 @@ export default function AdminLayout() {
                         setProfileMenuOpen(false);
                         navigate('/settings');
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 transition-colors"
                     >
-                      <Settings className="w-4 h-4 text-gray-500" />
+                      <Settings className="w-4 h-4 text-slate-400" />
                       Settings
                     </button>
                     {isMaster && (
@@ -576,9 +585,9 @@ export default function AdminLayout() {
                           setProfileMenuOpen(false);
                           navigate('/admin-users');
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 transition-colors"
                       >
-                        <Shield className="w-4 h-4 text-gray-500" />
+                        <Shield className="w-4 h-4 text-slate-400" />
                         Admin Users
                       </button>
                     )}
@@ -587,9 +596,9 @@ export default function AdminLayout() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setProfileMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/50 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-violet-50 transition-colors"
                     >
-                      <ExternalLink className="w-4 h-4 text-gray-500" />
+                      <ExternalLink className="w-4 h-4 text-slate-400" />
                       View Store
                     </a>
                     <button
@@ -598,7 +607,7 @@ export default function AdminLayout() {
                         setProfileMenuOpen(false);
                         logout();
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out
@@ -641,12 +650,19 @@ export default function AdminLayout() {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  rings: '#8b5cf6',
-  necklaces: '#8b5cf6',
+  rings: '#7c3aed',
+  necklaces: '#ec4899',
   earrings: '#10b981',
   bracelets: '#3b82f6',
-  other: '#ec4899',
+  pendants: '#f59e0b',
+  bangles: '#14b8a6',
+  chains: '#f97316',
+  other: '#64748b',
 };
+
+const CATEGORY_FALLBACK_PALETTE = [
+  '#8b5cf6', '#06b6d4', '#e11d48', '#84cc16', '#a855f7', '#0ea5e9', '#d946ef',
+];
 
 function buildOrderStatusData(orders: any[]) {
   const counts: Record<string, number> = {};
@@ -684,11 +700,19 @@ function buildCategoryData(products: any[]) {
     counts[cat] = (counts[cat] || 0) + 1;
   });
   const total = products.length || 1;
-  return Object.entries(counts).map(([name, count]) => ({
-    name: name.charAt(0).toUpperCase() + name.slice(1),
-    value: Math.round((count / total) * 100),
-    color: CATEGORY_COLORS[name] || CATEGORY_COLORS.other,
-  }));
+  let fallbackIdx = 0;
+  return Object.entries(counts).map(([name, count]) => {
+    let color = CATEGORY_COLORS[name];
+    if (!color) {
+      color = CATEGORY_FALLBACK_PALETTE[fallbackIdx % CATEGORY_FALLBACK_PALETTE.length];
+      fallbackIdx += 1;
+    }
+    return {
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      value: Math.round((count / total) * 100),
+      color,
+    };
+  });
 }
 
 function buildTopProducts(products: any[], orders: any[]) {
@@ -876,13 +900,13 @@ export function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Overview of your store activity and performance</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">Overview of your store activity and performance</p>
         </div>
         <button
           type="button"
           onClick={handleExport}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-400 transition-colors w-full sm:w-auto shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 transition-colors w-full sm:w-auto shrink-0"
         >
           <Download className="w-4 h-4" />
           Export Excel
@@ -896,8 +920,8 @@ export function AdminDashboard() {
           value={stats.totalProducts.toLocaleString()}
           change={statChanges.products}
           icon={Package}
-          iconColor="text-blue-400"
-          iconBg="bg-blue-500/10"
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
           delay={0}
         />
         <StatCard
@@ -905,8 +929,8 @@ export function AdminDashboard() {
           value={stats.totalOrders.toLocaleString()}
           change={statChanges.orders}
           icon={ShoppingCart}
-          iconColor="text-emerald-400"
-          iconBg="bg-emerald-500/10"
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
           delay={0.1}
         />
         <StatCard
@@ -914,8 +938,8 @@ export function AdminDashboard() {
           value={`रु ${stats.totalRevenue.toLocaleString('en-IN')}`}
           change={statChanges.revenue}
           iconText="रु"
-          iconColor="text-violet-400"
-          iconBg="bg-violet-500/10"
+          iconColor="text-violet-600"
+          iconBg="bg-violet-50"
           delay={0.2}
         />
         <StatCard
@@ -923,18 +947,20 @@ export function AdminDashboard() {
           value={stats.pendingOrders.toLocaleString()}
           change={statChanges.pending}
           icon={Clock}
-          iconColor="text-red-400"
-          iconBg="bg-red-500/10"
+          iconColor="text-red-600"
+          iconBg="bg-red-50"
           delay={0.3}
         />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      {/* Charts Row — equal-height cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-2 min-h-[420px]">
           <RevenueChart data={revenueData} />
         </div>
-        <CategoryChart data={categoryData} />
+        <div className="min-h-[420px]">
+          <CategoryChart data={categoryData} />
+        </div>
       </div>
 
       {/* Orders + Top Products */}

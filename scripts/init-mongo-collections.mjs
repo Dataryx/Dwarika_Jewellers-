@@ -27,6 +27,7 @@ const COLLECTIONS = [
   'rate_limits',
   'audit_logs',
   'admin_token_denylist',
+  'pending_signups',
 ];
 
 const COUNTER_KEYS = ['product', 'order', 'order_item', 'cart_item', 'category', 'team_member', 'contact_message'];
@@ -102,6 +103,12 @@ try {
     { expireAfterSeconds: 0, name: 'admin_token_denylist_ttl' }
   );
   console.log('  admin_token_denylist TTL index on expires_at');
+
+  await db.collection('pending_signups').createIndex(
+    { verify_expires: 1 },
+    { expireAfterSeconds: 0, name: 'pending_signups_verify_ttl' }
+  );
+  console.log('  pending_signups TTL index on verify_expires');
 
   console.log('\nDone. Optional: npm run seed:mongo  (sample products if products is empty)');
 } catch (err) {

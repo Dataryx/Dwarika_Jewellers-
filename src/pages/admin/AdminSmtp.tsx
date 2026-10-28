@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Mail, Save, Check, Loader2, Send } from 'lucide-react';
 import { adminFetch } from '../../lib/adminApi';
 import { AdminPage, settingsFormGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
-import { showNotification } from '../../components/Notification';
+import { showAdminNotification } from '../../components/Notification';
 
 type SmtpSecurity = 'auto' | 'tls' | 'ssl' | 'none';
 
@@ -34,7 +34,7 @@ const DEFAULTS: SmtpConfig = {
 };
 
 const inputClass =
-  'w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20';
+  'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20';
 
 export default function AdminSmtp() {
   const sidebarOpen = useAdminSidebarOpen();
@@ -68,7 +68,7 @@ export default function AdminSmtp() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testSuccess) {
-      showNotification('Run a successful test before saving SMTP settings.');
+      showAdminNotification('Run a successful test before saving SMTP settings.', 'error');
       return;
     }
     setSaving(true);
@@ -92,7 +92,7 @@ export default function AdminSmtp() {
       setForm({ ...DEFAULTS, ...data });
       setSaved(true);
       setTestSuccess(false);
-      showNotification('SMTP settings saved successfully.');
+      showAdminNotification('SMTP settings saved successfully.');
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
@@ -103,11 +103,11 @@ export default function AdminSmtp() {
 
   const handleTest = async () => {
     if (!testEmail.trim()) {
-      showNotification('Enter a test recipient email.');
+      showAdminNotification('Enter a test recipient email.', 'error');
       return;
     }
     if (!form.password.trim()) {
-      showNotification('Enter the SMTP app password before testing.');
+      showAdminNotification('Enter the SMTP app password before testing.', 'error');
       return;
     }
     setTesting(true);
@@ -136,11 +136,11 @@ export default function AdminSmtp() {
 
       const msg = data.message || 'Test successful! Save your SMTP settings to apply them.';
       setTestSuccess(true);
-      showNotification(msg);
+      showAdminNotification(msg, 'success');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Test email failed';
       setError(msg);
-      showNotification(msg);
+      showAdminNotification(msg, 'error');
     } finally {
       setTesting(false);
     }
@@ -149,7 +149,7 @@ export default function AdminSmtp() {
   if (loading) {
     return (
       <AdminPage>
-        <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
+        <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
           <Loader2 className="w-5 h-5 animate-spin" /> Loading SMTP settings…
         </div>
       </AdminPage>
@@ -160,12 +160,12 @@ export default function AdminSmtp() {
     <AdminPage>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-            <Mail className="w-5 h-5 text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
+            <Mail className="w-5 h-5 text-violet-600" />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-white">SMTP Configuration</h3>
-            <p className="text-sm text-gray-500 mt-1">
+            <h3 className="text-xl font-semibold text-slate-900">SMTP Configuration</h3>
+            <p className="text-sm text-slate-500 mt-1">
               Send order receipt emails to customers after checkout
             </p>
           </div>
@@ -176,12 +176,12 @@ export default function AdminSmtp() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm"
+          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-500/20 text-emerald-600 text-sm"
         >
           <Check className="w-4 h-4 shrink-0" />
           <span>
-            <strong className="font-medium">Test successful!</strong> A sample receipt was sent to{' '}
-            {testEmail.trim()}. Save your SMTP settings below to apply them.
+            <strong className="font-medium">Test successful!</strong> A configuration test was sent to{' '}
+            {testEmail.trim()}. Customer order emails will still go to each buyer’s address. Save below to apply.
           </span>
         </motion.div>
       )}
@@ -190,14 +190,14 @@ export default function AdminSmtp() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm"
+          className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-500/20 text-emerald-600 text-sm"
         >
           <Check className="w-4 h-4" /> Settings saved
         </motion.div>
       )}
 
       {error && (
-        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-500/20 text-red-600 text-sm">
           {error}
         </div>
       )}
@@ -207,21 +207,21 @@ export default function AdminSmtp() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-5"
+          className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5"
         >
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={form.enabled}
               onChange={(e) => update('enabled', e.target.checked)}
-              className="w-4 h-4 rounded border-gray-600 text-violet-500 focus:ring-violet-500/30"
+              className="w-4 h-4 rounded border-slate-300 text-violet-500 focus:ring-violet-500/30"
             />
-            <span className="text-sm text-white font-medium">Enable receipt emails on new orders</span>
+            <span className="text-sm text-slate-900 font-medium">Enable receipt emails on new orders</span>
           </label>
 
           <div className={settingsFormGridClass(sidebarOpen)}>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">SMTP Server</label>
+              <label className="block text-xs text-slate-500 mb-1.5">SMTP Server</label>
               <input
                 type="text"
                 value={form.host}
@@ -229,20 +229,20 @@ export default function AdminSmtp() {
                 placeholder="smtp.gmail.com"
                 className={inputClass}
               />
-              <p className="text-[11px] text-gray-600 mt-1">Gmail: smtp.gmail.com · Port 587</p>
+              <p className="text-[11px] text-slate-600 mt-1">Gmail: smtp.gmail.com · Port 587</p>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">Port</label>
+              <label className="block text-xs text-slate-500 mb-1.5">Port</label>
               <input
                 type="number"
                 value={form.port}
                 onChange={(e) => update('port', Number(e.target.value) || 587)}
                 className={inputClass}
               />
-              <p className="text-[11px] text-gray-600 mt-1">Common: 587 (TLS), 465 (SSL), 25</p>
+              <p className="text-[11px] text-slate-600 mt-1">Common: 587 (TLS), 465 (SSL), 25</p>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">Security</label>
+              <label className="block text-xs text-slate-500 mb-1.5">Security</label>
               <select
                 value={form.security}
                 onChange={(e) => update('security', e.target.value as SmtpSecurity)}
@@ -255,7 +255,7 @@ export default function AdminSmtp() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">Username</label>
+              <label className="block text-xs text-slate-500 mb-1.5">Username</label>
               <input
                 type="email"
                 value={form.username}
@@ -265,7 +265,7 @@ export default function AdminSmtp() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">App password</label>
+              <label className="block text-xs text-slate-500 mb-1.5">App password</label>
               <input
                 type="text"
                 value={form.password}
@@ -275,12 +275,12 @@ export default function AdminSmtp() {
                 autoComplete="off"
                 spellCheck={false}
               />
-              <p className="text-[11px] text-gray-600 mt-1">
+              <p className="text-[11px] text-slate-600 mt-1">
                 For Gmail, use an App Password - not your login password.
               </p>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">From email address</label>
+              <label className="block text-xs text-slate-500 mb-1.5">From email address</label>
               <input
                 type="email"
                 value={form.fromEmail}
@@ -290,7 +290,7 @@ export default function AdminSmtp() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">From name</label>
+              <label className="block text-xs text-slate-500 mb-1.5">From name</label>
               <input
                 type="text"
                 value={form.fromName}
@@ -300,7 +300,7 @@ export default function AdminSmtp() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5">Reply-to email (optional)</label>
+              <label className="block text-xs text-slate-500 mb-1.5">Reply-to email (optional)</label>
               <input
                 type="email"
                 value={form.replyTo}
@@ -316,11 +316,12 @@ export default function AdminSmtp() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-4"
+          className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4"
         >
-          <h4 className="text-sm font-medium text-white">Test configuration</h4>
-          <p className="text-xs text-gray-500">
-            Send a sample receipt email first. After a successful test, you can save your settings.
+          <h4 className="text-sm font-medium text-slate-900">Test configuration</h4>
+          <p className="text-xs text-slate-500">
+            Sends a one-time connection test to the address below (not a real order).
+            After checkout, confirmation emails always go to the customer’s email — never this test address.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <input
@@ -337,7 +338,7 @@ export default function AdminSmtp() {
               type="button"
               onClick={handleTest}
               disabled={testing}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-gray-700 text-sm text-gray-200 hover:bg-gray-700 disabled:opacity-50 shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 hover:bg-slate-100 disabled:opacity-50 shrink-0"
             >
               {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Test it
@@ -347,7 +348,7 @@ export default function AdminSmtp() {
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           {!testSuccess && (
-            <p className="text-xs text-gray-500">Test your configuration before saving.</p>
+            <p className="text-xs text-slate-500">Test your configuration before saving.</p>
           )}
           <button
             type="submit"
@@ -355,7 +356,7 @@ export default function AdminSmtp() {
             className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 sm:ml-auto ${
               testSuccess
                 ? 'bg-emerald-600 hover:bg-emerald-500 ring-2 ring-emerald-400/30'
-                : 'bg-violet-500 hover:bg-violet-400'
+                : 'bg-violet-600 hover:bg-violet-500'
             }`}
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}

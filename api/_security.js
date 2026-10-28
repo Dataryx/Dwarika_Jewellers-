@@ -113,6 +113,8 @@ export function contentSecurityPolicy({ isAdmin = false } = {}) {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    // Contact page Google Maps embed
+    "frame-src 'self' https://www.google.com https://maps.google.com https://maps.googleapis.com",
     "object-src 'none'",
     "script-src 'self'",
     // Tailwind / Vite inject some inline styles; fonts from Google Fonts

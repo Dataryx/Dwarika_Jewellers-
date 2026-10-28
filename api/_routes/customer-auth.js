@@ -20,6 +20,10 @@ import { validateEmailAddress } from '../../shared/emailValidation.mjs';
 import { handleApiRequest, apiError } from '../_security.js';
 import { rateLimitRequest } from '../_rateLimit.js';
 
+const PENDING_COL = 'pending_signups';
+const USER_EMAIL_FAIL =
+  'We could not send the email right now. Please try again in a few minutes. If it keeps failing, contact the store for help.';
+
 function parseBody(req) {
   let body = req.body;
   if (typeof body === 'string') {
@@ -63,19 +67,7 @@ function sessionMatches(doc, payload) {
   return Number(payload.tv || 0) === customerTokenVersion(doc);
 }
 
-async function sendCustomerVerificationEmail(db, doc, origin) {
-  const verifyToken = createVerifyToken();
-  await db.collection('customers').updateOne(
-    { _id: doc._id },
-    {
-      $set: {
-        verify_token: verifyToken,
-        verify_expires: verifyExpiresAt(),
-        email_verified: false,
-      },
-    }
-  );
-
+async function sendVerifyMail(db, { email, name, verifyToken }, origin) {
   const storeName = await getStoreName(db);
   const base = origin || '';
   const verifyUrl = base
@@ -83,11 +75,37 @@ async function sendCustomerVerificationEmail(db, doc, origin) {
     : `/verify-email?token=${encodeURIComponent(verifyToken)}`;
 
   await sendVerificationEmail({
-    to: doc.email,
-    name: doc.name,
+    to: email,
+    name,
     verifyUrl,
     storeName,
   });
+}
+
+/** Create/refresh a pending signup and email the verification link. Not a registered customer yet. */
+async function upsertPendingSignup(db, { email, name, passwordHash }) {
+  const pending = db.collection(PENDING_COL);
+  const verifyToken = createVerifyToken();
+  const verifyExpires = verifyExpiresAt();
+  const now = new Date();
+
+  await pending.updateOne(
+    { _id: email },
+    {
+      $set: {
+        email,
+        name,
+        password_hash: passwordHash,
+        verify_token: verifyToken,
+        verify_expires: verifyExpires,
+        updated_at: now,
+      },
+      $setOnInsert: { created_at: now },
+    },
+    { upsert: true }
+  );
+
+  return { email, name, verifyToken, verifyExpires };
 }
 
 export default async function handler(req, res) {
@@ -103,6 +121,7 @@ export default async function handler(req, res) {
   try {
     const db = await getMongoDb();
     const col = db.collection('customers');
+    const pending = db.collection(PENDING_COL);
 
     if (req.method === 'GET') {
       const token = getBearerToken(req);
@@ -154,38 +173,29 @@ export default async function handler(req, res) {
           return res.status(409).json({ error: 'This email is already registered. Please log in.' });
         }
 
-        const doc = {
-          _id: email,
+        // Legacy: unverified row already in customers — move to pending and remove incomplete customer
+        if (existing?.password_hash && !isEmailVerified(existing)) {
+          await col.deleteOne({ _id: email, email_verified: false });
+        }
+
+        const pendingDoc = await upsertPendingSignup(db, {
           email,
           name,
-          phone: existing?.phone || '',
-          address: existing?.address || '',
-          city: existing?.city || '',
-          password_hash: hashPassword(password),
-          auth_provider: 'email',
-          email_verified: false,
-          total_spent: existing?.total_spent || 0,
-          order_count: existing?.order_count || 0,
-          created_at: existing?.created_at || new Date(),
-        };
-
-        await col.updateOne({ _id: email }, { $set: doc }, { upsert: true });
-        const saved = await findCustomer(col, email);
+          passwordHash: hashPassword(password),
+        });
 
         try {
-          await sendCustomerVerificationEmail(db, saved, origin);
+          await sendVerifyMail(db, pendingDoc, origin);
         } catch (emailErr) {
           console.error('Verification email failed:', emailErr);
-          return res.status(503).json({
-            error:
-              'Account created, but the confirmation email could not be sent. Configure SMTP in the admin panel, then use “Resend confirmation email” on the login page.',
-          });
+          await pending.deleteOne({ _id: email });
+          return res.status(503).json({ error: USER_EMAIL_FAIL });
         }
 
         return res.status(201).json({
           ok: true,
           requiresVerification: true,
-          message: `Account created! We sent a confirmation link to ${email}. Please verify your email before signing in.`,
+          message: `We sent a confirmation link to ${email}. Click it to complete registration and activate your account.`,
         });
       }
 
@@ -208,45 +218,98 @@ export default async function handler(req, res) {
         }
 
         const doc = await findCustomer(col, email);
-        if (!doc?.password_hash || !verifyPassword(password, doc.password_hash)) {
-          return res.status(401).json({ error: 'Invalid email or password. Please try again.' });
+        if (doc?.password_hash && verifyPassword(password, doc.password_hash)) {
+          if (!isEmailVerified(doc)) {
+            return res.status(403).json({
+              error:
+                'Please confirm your email before signing in. Check your inbox for the confirmation link.',
+              code: 'EMAIL_NOT_VERIFIED',
+              email,
+            });
+          }
+          const session = await issueSession(col, doc);
+          return res.status(200).json(session);
         }
 
-        if (!isEmailVerified(doc)) {
+        // Pending signup (not registered yet) — allow resend flow
+        const pend = await pending.findOne({ _id: email });
+        if (pend?.password_hash && verifyPassword(password, pend.password_hash)) {
           return res.status(403).json({
-            error: 'Please confirm your email before signing in. Check your inbox for the confirmation link.',
+            error:
+              'Your account is not active yet. Please click the confirmation link we emailed you to complete registration.',
             code: 'EMAIL_NOT_VERIFIED',
             email,
           });
         }
 
-        const session = await issueSession(col, doc);
-        return res.status(200).json(session);
+        return res.status(401).json({ error: 'Invalid email or password. Please try again.' });
       }
 
       if (action === 'verify-email') {
         const token = String(body.token || '').trim();
         if (!token) return res.status(400).json({ error: 'Verification token is required' });
 
-        const doc = await col.findOne({
+        const pend = await pending.findOne({
           verify_token: token,
           verify_expires: { $gt: new Date() },
         });
-        if (!doc) {
+
+        if (pend) {
+          const now = new Date();
+          const customerDoc = {
+            _id: pend.email,
+            email: pend.email,
+            name: pend.name || '',
+            phone: '',
+            address: '',
+            city: '',
+            password_hash: pend.password_hash,
+            auth_provider: 'email',
+            email_verified: true,
+            total_spent: 0,
+            order_count: 0,
+            created_at: pend.created_at || now,
+            last_login: now,
+            updated_at: now,
+          };
+
+          await col.updateOne(
+            { _id: pend.email },
+            { $set: customerDoc },
+            { upsert: true }
+          );
+          await pending.deleteOne({ _id: pend._id });
+
+          const updated = await findCustomer(col, pend.email);
+          const sessionToken = createCustomerToken(updated.email, customerTokenVersion(updated));
+          return res.status(200).json({
+            ok: true,
+            token: sessionToken,
+            user: toPublicCustomer(updated),
+            message: 'Email confirmed! Your account is now registered and you are signed in.',
+          });
+        }
+
+        // Legacy: verify token still on customers collection
+        const legacy = await col.findOne({
+          verify_token: token,
+          verify_expires: { $gt: new Date() },
+        });
+        if (!legacy) {
           return res.status(400).json({
-            error: 'Invalid or expired confirmation link. Sign in and request a new confirmation email.',
+            error: 'Invalid or expired confirmation link. Request a new confirmation email from the login page.',
           });
         }
 
         await col.updateOne(
-          { _id: doc._id },
+          { _id: legacy._id },
           {
             $set: { email_verified: true, last_login: new Date() },
             $unset: { verify_token: '', verify_expires: '' },
           }
         );
 
-        const updated = await findCustomer(col, doc._id);
+        const updated = await findCustomer(col, legacy._id);
         const sessionToken = createCustomerToken(updated.email, customerTokenVersion(updated));
         return res.status(200).json({
           ok: true,
@@ -261,22 +324,52 @@ export default async function handler(req, res) {
         if (!emailCheck.ok) return res.status(400).json({ error: emailCheck.error });
         const email = emailCheck.normalized;
 
-        const doc = await findCustomer(col, email);
-        if (doc?.password_hash && !isEmailVerified(doc)) {
+        const pend = await pending.findOne({ _id: email });
+        if (pend?.password_hash) {
+          const verifyToken = createVerifyToken();
+          await pending.updateOne(
+            { _id: email },
+            {
+              $set: {
+                verify_token: verifyToken,
+                verify_expires: verifyExpiresAt(),
+                updated_at: new Date(),
+              },
+            }
+          );
           try {
-            await sendCustomerVerificationEmail(db, doc, origin);
+            await sendVerifyMail(db, { email, name: pend.name, verifyToken }, origin);
           } catch (emailErr) {
             console.error('Resend verification email failed:', emailErr);
-            return res.status(503).json({
-              error:
-                'Could not send confirmation email. Configure SMTP in the admin panel, then try again.',
-            });
+            return res.status(503).json({ error: USER_EMAIL_FAIL });
+          }
+        } else {
+          const doc = await findCustomer(col, email);
+          if (doc?.password_hash && !isEmailVerified(doc)) {
+            const verifyToken = createVerifyToken();
+            await col.updateOne(
+              { _id: doc._id },
+              {
+                $set: {
+                  verify_token: verifyToken,
+                  verify_expires: verifyExpiresAt(),
+                  email_verified: false,
+                },
+              }
+            );
+            try {
+              await sendVerifyMail(db, { email: doc.email, name: doc.name, verifyToken }, origin);
+            } catch (emailErr) {
+              console.error('Resend verification email failed:', emailErr);
+              return res.status(503).json({ error: USER_EMAIL_FAIL });
+            }
           }
         }
 
         return res.status(200).json({
           ok: true,
-          message: 'If an unverified account exists for that email, a new confirmation link has been sent.',
+          message:
+            'If a signup is waiting for confirmation for that email, a new link has been sent.',
         });
       }
 
@@ -294,7 +387,7 @@ export default async function handler(req, res) {
         }
 
         const doc = await findCustomer(col, email);
-        if (doc?.password_hash) {
+        if (doc?.password_hash && isEmailVerified(doc)) {
           const resetToken = createResetToken();
           await col.updateOne(
             { _id: email },
@@ -316,10 +409,7 @@ export default async function handler(req, res) {
             });
           } catch (emailErr) {
             console.error('Password reset email failed:', emailErr);
-            return res.status(503).json({
-              error:
-                'Could not send reset email. Configure SMTP in the admin panel, then try again.',
-            });
+            return res.status(503).json({ error: USER_EMAIL_FAIL });
           }
         }
 

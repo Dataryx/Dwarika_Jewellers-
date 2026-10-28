@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   loginCustomer,
@@ -12,6 +12,7 @@ import {
 } from '../lib/customerAuth';
 import { PASSWORD_REQUIREMENTS_HINT, validatePasswordStrength } from '../lib/passwordPolicy';
 import { validateEmailAddress } from '../lib/emailValidation';
+import { showNotification } from '../components/Notification';
 
 const DWARIKA_LOGO = '/DWARIKA%20MAIN%20LOGO.png';
 
@@ -42,8 +43,25 @@ export default function Login() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setErrors({});
+    setSuccessMessage('');
+    setSearchParams(next === 'login' ? {} : { mode: next }, { replace: true });
+  };
+
+  useEffect(() => {
+    const q = String(searchParams.get('mode') || '').toLowerCase();
+    if (q === 'signup' || q === 'forgot-password' || q === 'login') {
+      setMode(q === 'login' ? 'login' : q);
+    } else if (!searchParams.has('mode')) {
+      setMode('login');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) {
@@ -117,14 +135,19 @@ export default function Login() {
           password,
           name: fullName.trim(),
         });
-        setSuccessMessage(
+        const verifyMsg =
           data.message ||
-            'Account created! Check your email and click the confirmation link before signing in.'
-        );
-        setPendingVerificationEmail(email.trim().toLowerCase());
+          'Account created. Please check your email and click the verification link to activate your account.';
+        const signedUpEmail = email.trim().toLowerCase();
+        // Switch to login without clearing the success banner (switchMode wipes it).
         setMode('login');
+        setErrors({});
+        setSearchParams({}, { replace: true });
         setPassword('');
         setConfirmPassword('');
+        setPendingVerificationEmail(signedUpEmail);
+        setSuccessMessage(verifyMsg);
+        showNotification('Check your email for a verification link to complete registration.');
       } else if (mode === 'forgot-password') {
         const data = await requestPasswordReset(email.trim().toLowerCase());
         setSuccessMessage(data.message || 'If an account exists for that email, a reset link has been sent.');
@@ -221,7 +244,13 @@ export default function Login() {
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg space-y-3"
               >
-                <p className="text-sm text-green-700">{successMessage}</p>
+                <p className="text-sm font-medium text-green-800">Check your email</p>
+                <p className="text-sm text-green-700 mt-1">{successMessage}</p>
+                {pendingVerificationEmail && (
+                  <p className="text-xs text-green-600/90 mt-2">
+                    We sent a verification link to <span className="font-medium">{pendingVerificationEmail}</span>.
+                  </p>
+                )}
                 {pendingVerificationEmail && (
                   <button
                     type="button"
@@ -399,7 +428,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => {
-                    setMode('forgot-password');
+                    switchMode('forgot-password');
                     setErrors({});
                     setSuccessMessage('');
                   }}
@@ -434,11 +463,7 @@ export default function Login() {
                 Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('signup');
-                    setErrors({});
-                    setSuccessMessage('');
-                  }}
+                  onClick={() => switchMode('signup')}
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign up
@@ -450,11 +475,7 @@ export default function Login() {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setErrors({});
-                    setSuccessMessage('');
-                  }}
+                  onClick={() => switchMode('login')}
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign in
@@ -466,11 +487,7 @@ export default function Login() {
                 Remember your password?{' '}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setErrors({});
-                    setSuccessMessage('');
-                  }}
+                  onClick={() => switchMode('login')}
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign in

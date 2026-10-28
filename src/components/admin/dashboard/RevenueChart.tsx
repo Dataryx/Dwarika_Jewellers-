@@ -13,53 +13,56 @@ export default function RevenueChart({ data }: RevenueChartProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6"
+      className="bg-white border border-slate-200 rounded-2xl p-6 h-full min-h-[420px] flex flex-col"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <div>
-          <h3 className="text-base font-semibold text-white">Revenue Overview</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Weekly revenue and order trends</p>
+          <h3 className="text-base font-semibold text-slate-900">Revenue Overview</h3>
+          <p className="text-sm text-slate-500 mt-0.5">Weekly revenue and order trends</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-violet-500" />
-            <span className="text-xs text-gray-400">Revenue</span>
+            <span className="text-xs text-slate-400">Revenue</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-purple-500" />
-            <span className="text-xs text-gray-400">Orders</span>
+            <span className="text-xs text-slate-400">Orders</span>
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-          <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-          <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#1f2937',
-              border: '1px solid #374151',
-              borderRadius: '12px',
-              color: '#e5e7eb',
-              fontSize: '13px',
-            }}
-            itemStyle={{ color: '#e5e7eb' }}
-          />
-          <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#revenueGradient)" />
-          <Area type="monotone" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} fill="url(#ordersGradient)" />
-        </AreaChart>
-      </ResponsiveContainer>
+      <div className="flex-1 min-h-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                color: '#111827',
+                fontSize: '13px',
+              }}
+              itemStyle={{ color: '#374151' }}
+              labelStyle={{ color: '#111827' }}
+            />
+            <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={2} fill="url(#revenueGradient)" />
+            <Area type="monotone" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} fill="url(#ordersGradient)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </motion.div>
   );
 }

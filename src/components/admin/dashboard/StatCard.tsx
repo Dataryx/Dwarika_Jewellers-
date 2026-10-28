@@ -21,7 +21,7 @@ export default function StatCard({ title, value, change, icon: Icon, iconText, i
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className="bg-gray-800/60 border border-gray-700 rounded-2xl p-5 hover:border-gray-600 transition-colors"
+      className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-violet-200 shadow-sm transition-colors"
     >
       <div className="flex items-start justify-between mb-4">
         <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center`}>
@@ -32,14 +32,14 @@ export default function StatCard({ title, value, change, icon: Icon, iconText, i
           )}
         </div>
         <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
-          isPositive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+          isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
         }`}>
           {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           {isPositive ? '+' : ''}{change}%
         </div>
       </div>
-      <p className="text-2xl font-bold text-white mb-1">{value}</p>
-      <p className="text-sm text-gray-500">{title}</p>
+      <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
+      <p className="text-sm text-slate-500">{title}</p>
     </motion.div>
   );
 }

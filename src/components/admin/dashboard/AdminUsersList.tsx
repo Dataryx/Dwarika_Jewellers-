@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { adminFetch } from '../../../lib/adminApi';
 import { useAdminAuth } from '../../../lib/adminAuth';
-import { showNotification } from '../../Notification';
+import { showAdminNotification } from '../../Notification';
 import { PASSWORD_REQUIREMENTS_HINT, validatePasswordStrength } from '../../../lib/passwordPolicy';
 import { validateEmailAddress } from '../../../lib/emailValidation';
 
@@ -55,10 +55,10 @@ function adminToForm(admin: AdminUserRecord): Omit<AdminFormFields, 'password' |
 }
 
 const inputClass =
-  'w-full px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50';
+  'w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500';
 
 const editInputClass =
-  'w-full px-4 py-2.5 bg-gray-950/80 border border-amber-500/20 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/40';
+  'w-full px-4 py-2.5 bg-white border border-amber-200 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500/40';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '-';
@@ -100,7 +100,7 @@ export default function AdminUsersList() {
       if (!res.ok) throw new Error(data.error || 'Failed to load admins');
       if (Array.isArray(data)) setAdmins(data);
     } catch (err) {
-      showNotification(err instanceof Error ? err.message : 'Failed to load admin users');
+      showAdminNotification(err instanceof Error ? err.message : 'Failed to load admin users');
     } finally {
       setLoading(false);
     }
@@ -214,7 +214,7 @@ export default function AdminUsersList() {
               : 'Failed to create admin')
         );
       }
-      showNotification('Admin user created');
+      showAdminNotification('Admin user created');
       closeCreate();
       await loadAdmins();
     } catch (err) {
@@ -259,7 +259,7 @@ export default function AdminUsersList() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update admin');
-      showNotification('Admin user updated');
+      showAdminNotification('Admin user updated');
       closeEdit();
       await loadAdmins();
     } catch (err) {
@@ -280,17 +280,17 @@ export default function AdminUsersList() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete admin');
-      showNotification('Admin user removed');
+      showAdminNotification('Admin user removed');
       await loadAdmins();
     } catch (err) {
-      showNotification(err instanceof Error ? err.message : 'Failed to delete admin');
+      showAdminNotification(err instanceof Error ? err.message : 'Failed to delete admin');
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-slate-500">
           {isMaster
             ? 'View any account, or use Update / Delete on non-master rows.'
             : 'You can add new admins and view accounts. Only the master admin can update or remove.'}
@@ -298,7 +298,7 @@ export default function AdminUsersList() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-400 transition-colors shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
           Add Admin
@@ -324,24 +324,24 @@ export default function AdminUsersList() {
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               onSubmit={handleCreate}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-gray-900 border border-violet-500/30 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-2xl bg-white border border-violet-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
-                    <Plus className="w-5 h-5 text-violet-400" />
+                  <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                    <Plus className="w-5 h-5 text-violet-600" />
                   </div>
                   <div>
-                    <h3 id="create-admin-heading" className="text-base font-semibold text-white">
+                    <h3 id="create-admin-heading" className="text-base font-semibold text-slate-900">
                       Create new admin
                     </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">They can sign in to this dashboard immediately</p>
+                    <p className="text-xs text-slate-500 mt-0.5">They can sign in to this dashboard immediately</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={closeCreate}
-                  className="p-2 text-gray-500 hover:text-white shrink-0"
+                  className="p-2 text-slate-500 hover:text-slate-900 shrink-0"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
@@ -349,16 +349,16 @@ export default function AdminUsersList() {
               </div>
 
               {createError && (
-                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-500/20 rounded-lg px-4 py-2">
                   {createError}
                 </p>
               )}
 
-              <div className="rounded-xl border border-gray-700/80 bg-gray-900/40 p-4 space-y-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-violet-400/90">Personal</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-violet-600/90">Personal</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Full name *</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Full name *</label>
                     <input
                       type="text"
                       value={createForm.name}
@@ -369,7 +369,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Job title</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Job title</label>
                     <input
                       type="text"
                       value={createForm.job_title}
@@ -381,11 +381,11 @@ export default function AdminUsersList() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-700/80 bg-gray-900/40 p-4 space-y-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-violet-400/90">Contact</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-violet-600/90">Contact</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Email *</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Email *</label>
                     <input
                       type="email"
                       value={createForm.email}
@@ -396,7 +396,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Phone *</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Phone *</label>
                     <input
                       type="tel"
                       value={createForm.phone}
@@ -409,11 +409,11 @@ export default function AdminUsersList() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-700/80 bg-gray-900/40 p-4 space-y-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-violet-400/90">Location</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-violet-600/90">Location</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Address</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Address</label>
                     <input
                       type="text"
                       value={createForm.address}
@@ -423,7 +423,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">City</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">City</label>
                     <input
                       type="text"
                       value={createForm.city}
@@ -435,11 +435,11 @@ export default function AdminUsersList() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-700/80 bg-gray-900/40 p-4 space-y-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-violet-400/90">Login credentials</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-violet-600/90">Login credentials</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Password *</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Password *</label>
                     <input
                       type="password"
                       value={createForm.password}
@@ -448,10 +448,10 @@ export default function AdminUsersList() {
                       placeholder="Strong password"
                       className={inputClass}
                     />
-                    <p className="text-[11px] text-gray-500 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
+                    <p className="text-[11px] text-slate-500 mt-1">{PASSWORD_REQUIREMENTS_HINT}</p>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Confirm password *</label>
+                    <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Confirm password *</label>
                     <input
                       type="password"
                       value={createForm.passwordConfirm}
@@ -469,14 +469,14 @@ export default function AdminUsersList() {
                 <button
                   type="button"
                   onClick={closeCreate}
-                  className="px-4 py-2.5 text-sm text-gray-400 hover:text-white rounded-xl"
+                  className="px-4 py-2.5 text-sm text-slate-400 hover:text-slate-900 rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createSubmitting}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-500 text-white text-sm font-semibold hover:bg-violet-400 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 disabled:opacity-50"
                 >
                   {createSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   Create account
@@ -506,24 +506,24 @@ export default function AdminUsersList() {
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               onSubmit={handleUpdate}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-gray-900 border border-amber-500/30 rounded-2xl p-5 sm:p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-2xl bg-white border border-amber-200 rounded-2xl p-5 sm:p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                    <Pencil className="w-5 h-5 text-amber-400" />
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                    <Pencil className="w-5 h-5 text-amber-700" />
                   </div>
                   <div className="min-w-0">
-                    <h3 id="update-admin-heading" className="text-base font-semibold text-white">
+                    <h3 id="update-admin-heading" className="text-base font-semibold text-slate-900">
                       Update admin
                     </h3>
-                    <p className="text-sm text-gray-400 truncate mt-0.5">{editingAdmin.email}</p>
+                    <p className="text-sm text-slate-400 truncate mt-0.5">{editingAdmin.email}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={closeEdit}
-                  className="p-2 text-gray-500 hover:text-white shrink-0"
+                  className="p-2 text-slate-500 hover:text-slate-900 shrink-0"
                   aria-label="Close update"
                 >
                   <X className="w-5 h-5" />
@@ -531,19 +531,19 @@ export default function AdminUsersList() {
               </div>
 
               {updateError && (
-                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-500/20 rounded-lg px-4 py-2">
                   {updateError}
                 </p>
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <div className="rounded-xl border border-gray-700/80 bg-gray-900/40 p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-amber-400/90">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-amber-700/90">
                     <User className="w-3.5 h-3.5" />
                     Profile
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">Display name</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">Display name</label>
                     <input
                       type="text"
                       value={editForm.name}
@@ -553,7 +553,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">Job title</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">Job title</label>
                     <input
                       type="text"
                       value={editForm.job_title}
@@ -562,7 +562,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">Phone</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">Phone</label>
                     <input
                       type="tel"
                       value={editForm.phone}
@@ -571,7 +571,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">Address</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">Address</label>
                     <input
                       type="text"
                       value={editForm.address}
@@ -580,7 +580,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">City</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">City</label>
                     <input
                       type="text"
                       value={editForm.city}
@@ -588,26 +588,26 @@ export default function AdminUsersList() {
                       className={editInputClass}
                     />
                   </div>
-                  <div className="pt-2 border-t border-gray-700/60 sm:col-span-2">
-                    <p className="text-xs text-gray-500">Login email</p>
-                    <p className="text-sm text-gray-300 mt-1 flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-gray-500" />
+                  <div className="pt-2 border-t border-slate-200/60 sm:col-span-2">
+                    <p className="text-xs text-slate-500">Login email</p>
+                    <p className="text-sm text-slate-600 mt-1 flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-slate-500" />
                       {editingAdmin.email}
                     </p>
-                    <p className="text-[11px] text-gray-600 mt-1">Email cannot be changed after creation</p>
+                    <p className="text-[11px] text-slate-600 mt-1">Email cannot be changed after creation</p>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-gray-700/80 bg-gray-900/40 p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-amber-400/90">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-amber-700/90">
                     <KeyRound className="w-3.5 h-3.5" />
                     Reset password
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
+                  <p className="text-xs text-slate-500 leading-relaxed">
                     Leave both fields empty to keep the current password unchanged. {PASSWORD_REQUIREMENTS_HINT}
                   </p>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">New password</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">New password</label>
                     <input
                       type="password"
                       value={editPassword}
@@ -617,7 +617,7 @@ export default function AdminUsersList() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1.5">Confirm new password</label>
+                    <label className="block text-xs text-slate-500 mb-1.5">Confirm new password</label>
                     <input
                       type="password"
                       value={editPasswordConfirm}
@@ -634,14 +634,14 @@ export default function AdminUsersList() {
                 <button
                   type="button"
                   onClick={closeEdit}
-                  className="px-4 py-2.5 text-sm text-gray-400 hover:text-white"
+                  className="px-4 py-2.5 text-sm text-slate-400 hover:text-slate-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updateSubmitting}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/90 text-gray-900 text-sm font-semibold hover:bg-amber-400 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/90 text-slate-900 text-sm font-semibold hover:bg-amber-400 disabled:opacity-50"
                 >
                   {updateSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   Save updates
@@ -670,24 +670,24 @@ export default function AdminUsersList() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-gray-900 border border-violet-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl"
+              className="w-full max-w-md bg-white border border-violet-200 rounded-2xl p-5 sm:p-6 shadow-2xl"
             >
               <div className="flex items-start justify-between gap-4 mb-5">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
-                    <Eye className="w-5 h-5 text-violet-400" />
+                  <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                    <Eye className="w-5 h-5 text-violet-600" />
                   </div>
                   <div className="min-w-0">
-                    <h3 id="view-admin-heading" className="text-base font-semibold text-white">
+                    <h3 id="view-admin-heading" className="text-base font-semibold text-slate-900">
                       Admin details
                     </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Read-only account information</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Read-only account information</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={closeView}
-                  className="p-2 text-gray-500 hover:text-white shrink-0"
+                  className="p-2 text-slate-500 hover:text-slate-900 shrink-0"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5" />
@@ -695,35 +695,35 @@ export default function AdminUsersList() {
               </div>
 
               <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Name</p>
-                  <p className="text-sm text-white font-medium">{viewingAdmin.name}</p>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Name</p>
+                  <p className="text-sm text-slate-900 font-medium">{viewingAdmin.name}</p>
                   {viewingAdmin.job_title && (
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
                       <Briefcase className="w-3 h-3" />
                       {viewingAdmin.job_title}
                     </p>
                   )}
                 </div>
-                <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Email</p>
-                  <p className="text-sm text-gray-300 flex items-center gap-2 break-all">
-                    <Mail className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Email</p>
+                  <p className="text-sm text-slate-600 flex items-center gap-2 break-all">
+                    <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     {viewingAdmin.email}
                   </p>
                 </div>
-                <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Phone</p>
-                  <p className="text-sm text-gray-300 flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Phone</p>
+                  <p className="text-sm text-slate-600 flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     {viewingAdmin.phone || '-'}
                   </p>
                 </div>
                 {(viewingAdmin.address || viewingAdmin.city) && (
-                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Location</p>
-                    <p className="text-sm text-gray-300 flex items-start gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-gray-500 shrink-0 mt-0.5" />
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Location</p>
+                    <p className="text-sm text-slate-600 flex items-start gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
                       <span>
                         {viewingAdmin.address || '-'}
                         {viewingAdmin.city && (
@@ -737,35 +737,35 @@ export default function AdminUsersList() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Role</p>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Role</p>
                     <span
                       className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
                         viewingAdmin.role === 'master'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                          : 'bg-gray-700/50 text-gray-400 border-gray-600/30'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-slate-100 text-slate-400 border-slate-300'
                       }`}
                     >
                       {viewingAdmin.role === 'master' && <Shield className="w-3 h-3" />}
                       {viewingAdmin.role === 'master' ? 'Master' : 'Admin'}
                     </span>
                   </div>
-                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Added</p>
-                    <p className="text-sm text-gray-300 flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Added</p>
+                    <p className="text-sm text-slate-600 flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-slate-500" />
                       {formatDate(viewingAdmin.created_at)}
                     </p>
                   </div>
                 </div>
                 {currentEmail === viewingAdmin.email && (
-                  <p className="text-xs text-violet-400/90 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">
+                  <p className="text-xs text-violet-600/90 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
                     This is your signed-in account.
                   </p>
                 )}
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end mt-6 pt-4 border-t border-gray-700/60">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end mt-6 pt-4 border-t border-slate-200/60">
                 {isMaster && viewingAdmin.role !== 'master' && (
                   <button
                     type="button"
@@ -773,7 +773,7 @@ export default function AdminUsersList() {
                       closeView();
                       openEdit(viewingAdmin);
                     }}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-amber-400 hover:bg-amber-500/10 transition-colors sm:mr-auto"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors sm:mr-auto"
                   >
                     <Pencil className="w-4 h-4" />
                     Edit account
@@ -782,7 +782,7 @@ export default function AdminUsersList() {
                 <button
                   type="button"
                   onClick={closeView}
-                  className="px-4 py-2.5 text-sm text-gray-400 hover:text-white rounded-xl"
+                  className="px-4 py-2.5 text-sm text-slate-400 hover:text-slate-900 rounded-xl"
                 >
                   Close
                 </button>
@@ -795,35 +795,35 @@ export default function AdminUsersList() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-800/60 border border-gray-700 rounded-2xl overflow-hidden"
+        className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-gray-700">
-          <h3 className="text-base font-semibold text-white">All admin accounts</h3>
-          <span className="text-xs text-gray-500 shrink-0">{admins.length} total</span>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-slate-200">
+          <h3 className="text-base font-semibold text-slate-900">All admin accounts</h3>
+          <span className="text-xs text-slate-500 shrink-0">{admins.length} total</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Name</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Email</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Role</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Added</th>
-                <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Actions</th>
+              <tr className="border-b border-slate-200">
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3">Name</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3">Email</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3">Role</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3">Added</th>
+                <th className="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                     Loading admin users…
                   </td>
                 </tr>
               ) : admins.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                     No admin users found
                   </td>
                 </tr>
@@ -840,22 +840,22 @@ export default function AdminUsersList() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.05 * i }}
-                      className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                      className="border-b border-slate-200/50 hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-400">{sn}</td>
+                      <td className="px-4 sm:px-6 py-4 text-sm text-slate-400">{sn}</td>
                       <td className="px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{admin.name}</p>
+                          <p className="text-sm font-medium text-slate-900 truncate">{admin.name}</p>
                           {isCurrent && (
-                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider bg-violet-50 text-violet-600 border border-violet-200">
                               You
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-300 min-w-0">
-                          <Mail className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                        <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
+                          <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                           <span className="truncate">{admin.email}</span>
                         </div>
                       </td>
@@ -863,8 +863,8 @@ export default function AdminUsersList() {
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
                             isMasterRow
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                              : 'bg-gray-700/50 text-gray-400 border-gray-600/30'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-slate-100 text-slate-400 border-slate-300'
                           }`}
                         >
                           {isMasterRow && <Shield className="w-3 h-3" />}
@@ -872,7 +872,7 @@ export default function AdminUsersList() {
                         </span>
                       </td>
                       <td className="px-4 sm:px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
                           <Calendar className="w-3.5 h-3.5 shrink-0" />
                           {formatDate(admin.created_at)}
                         </div>
@@ -883,7 +883,7 @@ export default function AdminUsersList() {
                             type="button"
                             onClick={() => openView(admin)}
                             title="View"
-                            className="p-2 rounded-lg text-gray-400 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+                            className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
                             aria-label={`View ${admin.name}`}
                           >
                             <Eye className="w-4 h-4" />
@@ -894,7 +894,7 @@ export default function AdminUsersList() {
                                 type="button"
                                 onClick={() => openEdit(admin)}
                                 title="Update"
-                                className="p-2 rounded-lg text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                                className="p-2 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition-colors"
                                 aria-label={`Update ${admin.name}`}
                               >
                                 <Pencil className="w-4 h-4" />
@@ -903,7 +903,7 @@ export default function AdminUsersList() {
                                 type="button"
                                 onClick={() => handleDelete(admin)}
                                 title="Delete"
-                                className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                 aria-label={`Delete ${admin.name}`}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -911,7 +911,7 @@ export default function AdminUsersList() {
                             </>
                           )}
                           {isMaster && isMasterRow && (
-                            <span className="text-xs text-gray-600 px-1">Protected</span>
+                            <span className="text-xs text-slate-600 px-1">Protected</span>
                           )}
                         </div>
                       </td>

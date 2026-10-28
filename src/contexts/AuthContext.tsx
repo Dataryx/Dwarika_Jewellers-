@@ -3,7 +3,7 @@ import type { CustomerUser } from '../lib/customerAuth';
 import { fetchCurrentCustomer, logoutCustomer } from '../lib/customerAuth';
 import { resetSession } from '../lib/session';
 import { useStore } from '../lib/store';
-import { showNotification } from '../components/Notification';
+import { showStoreNotification } from '../components/Notification';
 
 interface AuthContextType {
   user: CustomerUser | null;
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
 
       warningTimerRef.current = setTimeout(() => {
-        showNotification('You will be signed out in 1 minute due to inactivity.');
+        showStoreNotification('You will be signed out in 1 minute due to inactivity.', 'info');
         const staySignedIn = window.confirm(
           'You have been inactive for 9 minutes. Click OK to stay signed in, or Cancel to sign out now.'
         );

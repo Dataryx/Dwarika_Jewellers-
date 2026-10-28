@@ -5,7 +5,7 @@ import { buildGoldRatesFromBullion, buildNepalGoldRates } from '../../shared/gol
 const SETTINGS_ID = 'store_settings';
 const DEFAULT_GRAMS_PER_TOLA = 11.664;
 const DEFAULT_DIAMOND_PER_CARAT = 28000;
-const CACHE_TTL_MS = 30 * 60 * 1000; // FENEGOSIDA updates once daily
+const CACHE_TTL_MS = 60 * 60 * 1000; // Refresh at most once per hour
 
 function getCacheState() {
   if (!globalThis.__dwarikaLivePrices) {

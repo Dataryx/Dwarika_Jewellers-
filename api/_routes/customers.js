@@ -33,7 +33,11 @@ export default async function handler(req, res) {
       const auth = await requireAdmin(req, adminsCol);
       if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
 
-      const docs = await col.find({}).sort({ created_at: -1 }).toArray();
+      // Only fully registered (verified) customers — pending signups live elsewhere
+      const docs = await col
+        .find({ email_verified: { $ne: false } })
+        .sort({ created_at: -1 })
+        .toArray();
 
       const ordersCol = db.collection('orders');
       const pipeline = [

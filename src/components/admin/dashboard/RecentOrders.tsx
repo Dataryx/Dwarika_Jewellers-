@@ -15,13 +15,13 @@ interface Order {
 }
 
 const statusStyles: Record<string, string> = {
-  pending: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-  confirmed: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  processing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  pending: 'bg-violet-50 text-violet-600 border-violet-200',
+  confirmed: 'bg-blue-50 text-blue-600 border-blue-500/20',
+  processing: 'bg-blue-50 text-blue-600 border-blue-500/20',
   shipped: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  delivered: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
+  delivered: 'bg-emerald-50 text-emerald-600 border-emerald-500/20',
+  completed: 'bg-emerald-50 text-emerald-600 border-emerald-500/20',
+  cancelled: 'bg-red-50 text-red-600 border-red-500/20',
 };
 
 function timeAgo(dateStr: string): string {
@@ -50,11 +50,11 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.4 }}
-      className="bg-gray-800/60 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col"
+      className="bg-white border border-slate-200 rounded-2xl overflow-hidden h-full flex flex-col"
     >
-      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-700">
-        <h3 className="text-base font-semibold text-white">Recent Orders</h3>
-        <Link to="/orders" className="flex items-center gap-1 text-sm text-violet-500 hover:text-violet-400 transition-colors">
+      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
+        <h3 className="text-base font-semibold text-slate-900">Recent Orders</h3>
+        <Link to="/orders" className="flex items-center gap-1 text-sm text-violet-500 hover:text-violet-600 transition-colors">
           View All
           <ArrowRight className="w-4 h-4" />
         </Link>
@@ -62,18 +62,18 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
       <div className="overflow-x-auto flex-1 min-h-[360px]">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-700">
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Order ID</th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Customer</th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Total</th>
-              <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Time</th>
+            <tr className="border-b border-slate-200">
+              <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Order ID</th>
+              <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Customer</th>
+              <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Status</th>
+              <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Total</th>
+              <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Time</th>
             </tr>
           </thead>
           <tbody>
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No orders yet</td>
+                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">No orders yet</td>
               </tr>
             ) : (
               visibleOrders.map((order, i) => (
@@ -82,13 +82,13 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.5 + i * 0.05 }}
-                  className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                  className="border-b border-slate-200/50 hover:bg-slate-50 transition-colors"
                 >
-                  <td className="px-6 py-4 text-sm font-medium text-white font-mono">{displayOrderId(order)}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-slate-900 font-mono">{displayOrderId(order)}</td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-sm font-medium text-white">{order.customer_name}</p>
-                      <p className="text-xs text-gray-500">{order.customer_email}</p>
+                      <p className="text-sm font-medium text-slate-900">{order.customer_name}</p>
+                      <p className="text-xs text-slate-500">{order.customer_email}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -96,8 +96,8 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-medium text-white">रु {Number(order.total).toLocaleString('en-IN')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{timeAgo(order.created_at)}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-slate-900">रु {Number(order.total).toLocaleString('en-IN')}</td>
+                  <td className="px-6 py-4 text-sm text-slate-500">{timeAgo(order.created_at)}</td>
                 </motion.tr>
               ))
             )}
@@ -105,8 +105,8 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
         </table>
       </div>
       {orders.length > 0 && (
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-700">
-          <p className="text-xs text-gray-500">
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200">
+          <p className="text-xs text-slate-500">
             Page {currentPage} of {totalPages}
           </p>
           <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -114,7 +114,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
               type="button"
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
             >
               Prev
             </button>
@@ -123,7 +123,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                 key={page}
                 type="button"
                 onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${page === currentPage ? 'border-[#c9a962] bg-[#c9a962] text-white' : 'border-gray-700 text-gray-300 hover:border-[#c9a962] hover:text-[#c9a962]'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${page === currentPage ? 'border-[#c9a962] bg-[#c9a962] text-slate-900' : 'border-slate-200 text-slate-600 hover:border-[#c9a962] hover:text-[#c9a962]'}`}
               >
                 {page}
               </button>
@@ -132,7 +132,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
               type="button"
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#c9a962] hover:text-[#c9a962] transition-colors"
             >
               Next
             </button>

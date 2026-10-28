@@ -153,7 +153,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"><LogOut className="w-4 h-4" />Sign Out</button>
                         </>
                       ) : (
-                        <Link to="/login" className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">Sign In</Link>
+                        <Link
+                          to="/login?mode=login"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Sign In
+                        </Link>
                       )}
                     </motion.div>
                   )}
@@ -190,7 +196,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       <button onClick={handleSignOut} className="text-sm text-red-600">Sign Out</button>
                     </>
                   ) : (
-                    <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block text-sm font-medium tracking-[0.1em] uppercase text-[#c9a962]">Sign In</Link>
+                    <Link
+                      to="/login?mode=login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block text-sm font-medium tracking-[0.1em] uppercase text-[#c9a962]"
+                    >
+                      Sign In
+                    </Link>
                   )}
                 </div>
               </nav>

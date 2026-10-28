@@ -228,6 +228,7 @@ export async function sendOrderReceiptEmail(order, options = {}) {
   const smtp = await loadSmtpConfig();
   if (!smtp.enabled) return { sent: false, reason: 'smtp_disabled' };
 
+  // Always send to the order's customer email only — never SMTP from/username/test fields.
   const to = String(order.customer_email || '').trim().toLowerCase();
   if (!to) return { sent: false, reason: 'no_customer_email' };
 

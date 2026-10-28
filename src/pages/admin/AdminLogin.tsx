@@ -28,7 +28,7 @@ const DWARIKA_LOGO = '/DWARIKA%20MAIN%20LOGO.png';
 
 const inputClass =
 
-  'w-full pl-12 pr-4 py-3 bg-gray-800/50 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
+  'w-full pl-12 pr-4 py-3 bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all';
 
 
 
@@ -208,7 +208,7 @@ export default function AdminLogin() {
 
   return (
 
-    <div className="min-h-screen bg-gray-950 flex">
+    <div className="min-h-screen bg-slate-50 flex">
 
       <div className="hidden lg:block lg:w-1/2 relative">
 
@@ -272,13 +272,13 @@ export default function AdminLogin() {
 
           <div className="text-center mb-8">
 
-            <h1 className="text-2xl font-serif font-medium text-white">
+            <h1 className="text-2xl font-serif font-medium text-slate-900">
 
               {mode === 'login' ? 'Welcome Back' : 'Reset Password'}
 
             </h1>
 
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-slate-500">
 
               {mode === 'login'
 
@@ -308,9 +308,9 @@ export default function AdminLogin() {
 
               >
 
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/50 rounded-lg">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
 
-                  <p className="text-sm text-emerald-400">{successMessage}</p>
+                  <p className="text-sm text-emerald-600">{successMessage}</p>
 
                 </div>
 
@@ -338,9 +338,9 @@ export default function AdminLogin() {
 
               >
 
-                <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
 
-                  <p className="text-sm text-red-400">{error}</p>
+                  <p className="text-sm text-red-600">{error}</p>
 
                 </div>
 
@@ -356,7 +356,7 @@ export default function AdminLogin() {
 
             <div className="space-y-1">
 
-              <label htmlFor="admin-email" className="block text-xs font-medium tracking-[0.1em] uppercase text-gray-400">
+              <label htmlFor="admin-email" className="block text-xs font-medium tracking-[0.1em] uppercase text-slate-400">
 
                 Email Address
 
@@ -364,7 +364,7 @@ export default function AdminLogin() {
 
               <div className="relative">
 
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
 
                 <input
 
@@ -396,7 +396,7 @@ export default function AdminLogin() {
 
               <div className="space-y-1">
 
-                <label htmlFor="admin-password" className="block text-xs font-medium tracking-[0.1em] uppercase text-gray-400">
+                <label htmlFor="admin-password" className="block text-xs font-medium tracking-[0.1em] uppercase text-slate-400">
 
                   Password
 
@@ -404,7 +404,7 @@ export default function AdminLogin() {
 
                 <div className="relative">
 
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
 
                   <input
 
@@ -432,7 +432,7 @@ export default function AdminLogin() {
 
                     onClick={() => setShowPassword(!showPassword)}
 
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
 
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
 
@@ -460,7 +460,7 @@ export default function AdminLogin() {
 
                   onClick={() => switchMode('forgot-password')}
 
-                  className="text-xs text-violet-400 hover:text-violet-300 font-medium"
+                  className="text-xs text-violet-600 hover:text-violet-700 font-medium"
 
                 >
 
@@ -480,7 +480,7 @@ export default function AdminLogin() {
 
               disabled={loading}
 
-              className="w-full py-4 bg-violet-500 text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-violet-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full py-4 bg-violet-600 text-white text-xs font-medium tracking-[0.15em] uppercase hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
 
             >
 
@@ -506,7 +506,7 @@ export default function AdminLogin() {
 
 
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-slate-500">
 
             {mode === 'login' ? (
 
@@ -520,7 +520,7 @@ export default function AdminLogin() {
 
                   onClick={() => switchMode('forgot-password')}
 
-                  className="text-violet-500 hover:text-violet-400 font-medium"
+                  className="text-violet-500 hover:text-violet-600 font-medium"
 
                 >
 
@@ -542,7 +542,7 @@ export default function AdminLogin() {
 
                   onClick={() => switchMode('login')}
 
-                  className="text-violet-500 hover:text-violet-400 font-medium"
+                  className="text-violet-500 hover:text-violet-600 font-medium"
 
                 >
 

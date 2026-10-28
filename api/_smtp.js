@@ -100,7 +100,12 @@ export async function loadSmtpConfig() {
 
   if (process.env.SMTP_ENABLED === 'true') merged.enabled = true;
 
-  return normalizeSmtpCredentials(merged);
+  const normalized = normalizeSmtpCredentials(merged);
+  delete normalized.toEmail;
+  delete normalized.testEmail;
+  delete normalized.testRecipient;
+  delete normalized.passwordSet;
+  return normalized;
 }
 
 function resolveTransportOptions(smtp) {
@@ -166,16 +171,42 @@ export async function sendMailMessage({ to, subject, html, text, smtpOverride, a
   });
 }
 
+const SMTP_SAVE_KEYS = [
+  'enabled',
+  'host',
+  'port',
+  'security',
+  'username',
+  'password',
+  'fromEmail',
+  'fromName',
+  'replyTo',
+];
+
 export async function saveSmtpConfig(partial) {
   const db = await getMongoDb();
   const col = db.collection('settings');
   const existing = await col.findOne({ _id: SETTINGS_ID });
   const current = existing?.smtp && typeof existing.smtp === 'object' ? existing.smtp : {};
 
-  const next = normalizeSmtpCredentials({ ...DEFAULT_SMTP, ...current, ...partial });
-  if (!partial.password && current.password) {
+  // Only persist known SMTP fields — never store test recipient / toEmail / etc.
+  const cleanPartial = {};
+  if (partial && typeof partial === 'object') {
+    for (const key of SMTP_SAVE_KEYS) {
+      if (partial[key] !== undefined) cleanPartial[key] = partial[key];
+    }
+  }
+
+  const next = normalizeSmtpCredentials({ ...DEFAULT_SMTP, ...current, ...cleanPartial });
+  if (!cleanPartial.password && current.password) {
     next.password = normalizeSmtpCredentials({ password: current.password }).password;
   }
+
+  // Strip any legacy mistaken keys from older saves
+  delete next.toEmail;
+  delete next.testEmail;
+  delete next.testRecipient;
+  delete next.passwordSet;
 
   await col.updateOne(
     { _id: SETTINGS_ID },

@@ -18,14 +18,21 @@ import { useCallback, useState } from 'react';
 
 export default function AdminApp() {
   const [notification, setNotification] = useState('');
+  const [notificationVariant, setNotificationVariant] = useState<'success' | 'error' | 'info'>(
+    'success'
+  );
   const [showNotificationState, setShowNotificationState] = useState(false);
 
-  const handleNotification = useCallback((message: string) => {
-    setNotification(message);
-    setShowNotificationState(true);
-  }, []);
+  const handleNotification = useCallback(
+    (payload: { message: string; variant: 'success' | 'error' | 'info' }) => {
+      setNotification(payload.message);
+      setNotificationVariant(payload.variant);
+      setShowNotificationState(true);
+    },
+    []
+  );
 
-  setNotificationCallback(handleNotification);
+  setNotificationCallback(handleNotification, 'admin');
 
   const handleCloseNotification = useCallback(() => {
     setShowNotificationState(false);
@@ -34,6 +41,7 @@ export default function AdminApp() {
   return (
     <BrowserRouter>
       <AdminAuthProvider>
+        <div className="admin-app min-h-screen">
         <Routes>
           <Route path="/login" element={<AdminLogin />} />
           <Route path="/reset-password" element={<AdminResetPassword />} />
@@ -65,8 +73,10 @@ export default function AdminApp() {
         <Notification
           message={notification}
           show={showNotificationState}
+          variant={notificationVariant}
           onClose={handleCloseNotification}
         />
+        </div>
       </AdminAuthProvider>
     </BrowserRouter>
   );

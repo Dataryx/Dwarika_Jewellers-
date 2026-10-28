@@ -44,8 +44,12 @@ export default function ProductDetail() {
     if (id) fetchProduct();
   }, [id]);
 
+  const stock = Number(product?.stock ?? 0);
+  const outOfStock = stock <= 0;
+  const lowStock = stock > 0 && stock <= 5;
+
   const handleAddToCart = async () => {
-    if (!product || adding) return;
+    if (!product || adding || outOfStock) return;
     setAdding(true);
     try {
       const res = await apiFetch('/api/cart', { method: 'POST', headers: cartHeaders(), body: JSON.stringify({ product_id: product.id, quantity }) });
@@ -54,9 +58,13 @@ export default function ProductDetail() {
         const cartData = await cartRes.json();
         setCart(cartData);
         showNotification(`${product.name} added to bag`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showNotification(data.error || 'Could not add to bag', 'error');
       }
     } catch (err) {
       console.error('Failed to add to cart:', err);
+      showNotification('Could not add to bag', 'error');
     } finally {
       setAdding(false);
     }
@@ -95,7 +103,7 @@ export default function ProductDetail() {
       await navigator.clipboard.writeText(url);
       showNotification('Link copied to clipboard');
     } catch {
-      showNotification('Could not share this product');
+      showNotification('Could not share this product', 'error');
     }
   };
 
@@ -126,6 +134,11 @@ export default function ProductDetail() {
             <span className="text-xs font-medium tracking-[0.2em] uppercase text-[#c9a962]">{product.category}</span>
             <h1 className="text-3xl sm:text-4xl font-serif font-medium text-gray-900 mt-3">{product.name}</h1>
             <p className="text-2xl font-medium text-gray-900 mt-6">रु {displayPrice.toLocaleString('en-IN')}</p>
+            {outOfStock ? (
+              <p className="mt-3 text-sm font-medium text-gray-500 tracking-wide uppercase">Out of Stock</p>
+            ) : lowStock ? (
+              <p className="mt-3 text-sm font-medium text-[#c9a962] tracking-wide">Low stock — only {stock} left</p>
+            ) : null}
             <p className="text-gray-500 leading-relaxed mt-8">{product.description}</p>
             <div className="mt-6 flex items-center gap-3">
               <span className="text-xs text-gray-400 uppercase tracking-wider">Material:</span>
@@ -135,15 +148,37 @@ export default function ProductDetail() {
             <div className="mt-10 flex items-center gap-6">
               <span className="text-xs font-medium tracking-[0.1em] uppercase text-gray-900">Quantity</span>
               <div className="flex items-center border border-gray-200">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50"><Minus className="w-4 h-4" /></button>
+                <button
+                  type="button"
+                  disabled={outOfStock}
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
                 <span className="w-12 text-center text-sm font-medium">{quantity}</span>
-                <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50"><Plus className="w-4 h-4" /></button>
+                <button
+                  type="button"
+                  disabled={outOfStock}
+                  onClick={() => setQuantity(Math.min(stock, quantity + 1))}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
             <div className="mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleAddToCart} disabled={adding} className={`flex-1 py-4 text-xs font-medium tracking-[0.15em] uppercase transition-colors disabled:opacity-50 ${adding ? 'bg-gray-400 text-white' : 'bg-gray-900 text-white hover:bg-[#c9a962]'}`}>
-                {adding ? 'Adding...' : 'Add to Bag'}
+              <motion.button
+                whileHover={{ scale: outOfStock ? 1 : 1.01 }}
+                whileTap={{ scale: outOfStock ? 1 : 0.99 }}
+                onClick={handleAddToCart}
+                disabled={adding || outOfStock}
+                className={`flex-1 py-4 text-xs font-medium tracking-[0.15em] uppercase transition-colors disabled:opacity-50 ${
+                  outOfStock ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : adding ? 'bg-gray-400 text-white' : 'bg-gray-900 text-white hover:bg-[#c9a962]'
+                }`}
+              >
+                {outOfStock ? 'Out of Stock' : adding ? 'Adding...' : 'Add to Bag'}
               </motion.button>
               <div className="flex gap-3 sm:contents">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleWishlist} className={`sm:w-14 h-14 border transition-colors ${liked ? 'border-[#c9a962] bg-[#c9a962]/10' : 'border-gray-200 hover:border-gray-400'}`}>

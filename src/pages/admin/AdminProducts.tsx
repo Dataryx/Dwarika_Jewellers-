@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, Trash2, Search, Filter, X, Save, Package, Eye, ExternalLink } from 'lucide-react';
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { ImageUploadField } from '../../components/admin/ImageUploadField';
-import { showNotification } from '../../components/Notification';
+import { showAdminNotification } from '../../components/Notification';
 import { useStoreSettings } from '../../lib/useStoreSettings';
 import { resolveProductPrice } from '../../lib/pricing';
 import { adminFetch } from '../../lib/adminApi';
@@ -17,9 +17,11 @@ interface Product {
   price: number;
   product_type?: string;
   gold_weight_14k?: number;
+  silver_weight?: number;
   diamond_weight_carat?: number;
   labour_charge?: number;
   gold_extra_charge?: number;
+  silver_extra_charge?: number;
   diamond_extra_charge?: number;
   image_url: string;
   category: string;
@@ -29,9 +31,9 @@ interface Product {
 }
 
 const stockStatus = (stock: number) => {
-  if (stock === 0) return { label: 'Out of Stock', style: 'bg-red-500/10 text-red-400 border-red-500/20' };
-  if (stock < 5) return { label: 'Low Stock', style: 'bg-violet-500/10 text-violet-400 border-violet-500/20' };
-  return { label: 'In Stock', style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+  if (stock === 0) return { label: 'Out of Stock', style: 'bg-red-50 text-red-600 border-red-500/20' };
+  if (stock < 5) return { label: 'Low Stock', style: 'bg-violet-50 text-violet-600 border-violet-200' };
+  return { label: 'In Stock', style: 'bg-emerald-50 text-emerald-600 border-emerald-500/20' };
 };
 
 const PAGE_SIZE = 10;
@@ -138,8 +140,8 @@ export function AdminProductList() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
-          <h3 className="text-xl font-semibold text-white">Products</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="text-xl font-semibold text-slate-900">Products</h3>
+          <p className="text-sm text-slate-500 mt-1">
             {loading
               ? 'Manage your product catalog'
               : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'} · ${PAGE_SIZE} per page`}
@@ -147,7 +149,7 @@ export function AdminProductList() {
         </div>
         <button
           onClick={() => navigate('/products/new')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
           Add Product
@@ -162,34 +164,34 @@ export function AdminProductList() {
         className="flex flex-col sm:flex-row gap-4"
       >
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Search by name, material, or Product ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+            className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
           />
         </div>
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2.5 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all capitalize"
+          className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:border-violet-500 transition-all capitalize"
         >
           {categories.map(cat => (
             <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>
           ))}
         </select>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500 shrink-0" />
+          <Filter className="w-4 h-4 text-slate-500 shrink-0" />
           {(['all', 'active', 'low', 'out'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setStockFilter(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors border ${
                 stockFilter === f
-                  ? 'bg-violet-500/10 text-violet-500 border-violet-500/30'
-                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-300'
+                  ? 'bg-violet-50 text-violet-600 border-violet-200'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 hover:text-slate-700'
               }`}
             >
               {f === 'out' ? 'Out of Stock' : f === 'low' ? 'Low Stock' : f === 'active' ? 'In Stock' : 'All'}
@@ -203,32 +205,32 @@ export function AdminProductList() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gray-800/60 border border-gray-700 rounded-2xl overflow-hidden"
+        className="bg-white border border-slate-200 rounded-2xl overflow-hidden"
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Product ID</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Product</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Category</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Price</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Stock</th>
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Status</th>
-                <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Actions</th>
+              <tr className="border-b border-slate-200">
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 sm:px-6 py-3 w-14">SN</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Product ID</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Product</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Category</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Price</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Stock</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Status</th>
+                <th className="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">Loading...</td>
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">Loading...</td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center">
-                    <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No products found</p>
+                    <Package className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                    <p className="text-sm text-slate-500">No products found</p>
                   </td>
                 </tr>
               ) : (
@@ -241,9 +243,9 @@ export function AdminProductList() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.25 + i * 0.04 }}
-                      className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                      className="border-b border-slate-200/50 hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-400">{sn}</td>
+                      <td className="px-4 sm:px-6 py-4 text-sm text-slate-400">{sn}</td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-mono text-violet-300/90">
                           {product.product_id || '—'}
@@ -254,19 +256,19 @@ export function AdminProductList() {
                           <img
                             src={product.image_url}
                             alt={product.name}
-                            className="w-10 h-10 rounded-lg object-cover bg-gray-700 shrink-0"
+                            className="w-10 h-10 rounded-lg object-cover bg-slate-200 shrink-0"
                           />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{product.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{product.material}</p>
+                            <p className="text-sm font-medium text-slate-900 truncate">{product.name}</p>
+                            <p className="text-xs text-slate-500 truncate">{product.material}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400 capitalize">{product.category}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-white">
+                      <td className="px-6 py-4 text-sm text-slate-400 capitalize">{product.category}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900">
                         रु {resolveProductPrice(product as any, settings).toLocaleString('en-IN')}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">{product.stock}</td>
+                      <td className="px-6 py-4 text-sm text-slate-400">{product.stock}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${status.style}`}>
                           {product.featured && <span className="text-violet-500 mr-1.5">★</span>}
@@ -280,7 +282,7 @@ export function AdminProductList() {
                             onClick={() => setViewingProduct(product)}
                             title="View"
                             aria-label={`View ${product.name}`}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-500/10 text-gray-400 hover:text-violet-400 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-50 text-slate-400 hover:text-violet-600 transition-colors"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -289,7 +291,7 @@ export function AdminProductList() {
                             onClick={() => navigate(`/products/edit/${product.id}`)}
                             title="Update"
                             aria-label={`Update ${product.name}`}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-500/10 text-gray-400 hover:text-amber-400 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-700 transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -298,7 +300,7 @@ export function AdminProductList() {
                             onClick={() => handleDelete(product.id)}
                             title="Delete"
                             aria-label={`Delete ${product.name}`}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -312,17 +314,17 @@ export function AdminProductList() {
           </table>
         </div>
         {!loading && filteredProducts.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-t border-gray-700">
-            <p className="text-sm text-gray-500">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-t border-slate-200">
+            <p className="text-sm text-slate-500">
               Showing {rangeStart}–{rangeEnd} of {filteredProducts.length}
-              <span className="hidden sm:inline text-gray-600"> · {PAGE_SIZE} per page</span>
+              <span className="hidden sm:inline text-slate-600"> · {PAGE_SIZE} per page</span>
             </p>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage <= 1}
-                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Previous
               </button>
@@ -333,8 +335,8 @@ export function AdminProductList() {
                   onClick={() => setPage(n)}
                   className={`min-w-[2.25rem] px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     n === safePage
-                      ? 'border-violet-500/50 bg-violet-500/10 text-violet-400'
-                      : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700'
+                      ? 'border-violet-300 bg-violet-50 text-violet-600'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   {n}
@@ -344,7 +346,7 @@ export function AdminProductList() {
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage >= totalPages}
-                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Next
               </button>
@@ -359,6 +361,7 @@ export function AdminProductList() {
           const status = stockStatus(viewingProduct.stock);
           const productType = viewingProduct.product_type || 'both';
           const showGold = productType === 'gold' || productType === 'both';
+          const showSilver = productType === 'silver';
           const showDiamond = productType === 'diamond' || productType === 'both';
           const resolvedPrice = resolveProductPrice(viewingProduct as any, settings);
 
@@ -378,24 +381,24 @@ export function AdminProductList() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 8 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg bg-gray-900 border border-violet-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl"
+                className="w-full max-w-lg bg-white border border-violet-200 rounded-2xl p-5 sm:p-6 shadow-2xl"
               >
                 <div className="flex items-start justify-between gap-4 mb-5">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
-                      <Eye className="w-5 h-5 text-violet-400" />
+                    <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center shrink-0">
+                      <Eye className="w-5 h-5 text-violet-600" />
                     </div>
                     <div className="min-w-0">
-                      <h3 id="view-product-heading" className="text-base font-semibold text-white truncate">
+                      <h3 id="view-product-heading" className="text-base font-semibold text-slate-900 truncate">
                         Product details
                       </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">Read-only catalog information</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Read-only catalog information</p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setViewingProduct(null)}
-                    className="p-2 text-gray-500 hover:text-white shrink-0"
+                    className="p-2 text-slate-500 hover:text-slate-900 shrink-0"
                     aria-label="Close"
                   >
                     <X className="w-5 h-5" />
@@ -404,7 +407,7 @@ export function AdminProductList() {
 
                 <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
                   {viewingProduct.image_url && (
-                    <div className="rounded-xl overflow-hidden border border-gray-700/80 bg-gray-800/50">
+                    <div className="rounded-xl overflow-hidden border border-slate-200 bg-white">
                       <img
                         src={viewingProduct.image_url}
                         alt={viewingProduct.name}
@@ -413,50 +416,50 @@ export function AdminProductList() {
                     </div>
                   )}
 
-                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Name</p>
-                    <p className="text-sm text-white font-medium">{viewingProduct.name}</p>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Name</p>
+                    <p className="text-sm text-slate-900 font-medium">{viewingProduct.name}</p>
                     {viewingProduct.description && (
-                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">{viewingProduct.description}</p>
+                      <p className="text-xs text-slate-400 mt-2 leading-relaxed">{viewingProduct.description}</p>
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Product ID</p>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Product ID</p>
                     <p className="text-sm font-mono text-violet-300">{viewingProduct.product_id || '—'}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Category</p>
-                      <p className="text-sm text-gray-300 capitalize">{viewingProduct.category || '-'}</p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Category</p>
+                      <p className="text-sm text-slate-600 capitalize">{viewingProduct.category || '-'}</p>
                     </div>
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Material</p>
-                      <p className="text-sm text-gray-300">{viewingProduct.material || '-'}</p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Material</p>
+                      <p className="text-sm text-slate-600">{viewingProduct.material || '-'}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Price</p>
-                      <p className="text-sm text-white font-medium">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Price</p>
+                      <p className="text-sm text-slate-900 font-medium">
                         रु {resolvedPrice.toLocaleString('en-IN')}
                       </p>
                     </div>
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Type</p>
-                      <p className="text-sm text-gray-300 capitalize">{productType}</p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Type</p>
+                      <p className="text-sm text-slate-600 capitalize">{productType}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Stock</p>
-                      <p className="text-sm text-gray-300">{viewingProduct.stock}</p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Stock</p>
+                      <p className="text-sm text-slate-600">{viewingProduct.stock}</p>
                     </div>
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Status</p>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Status</p>
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${status.style}`}>
                         {viewingProduct.featured && <span className="text-violet-500 mr-1.5">★</span>}
                         {status.label}
@@ -464,34 +467,39 @@ export function AdminProductList() {
                     </div>
                   </div>
 
-                  {(showGold || showDiamond) && (
-                    <div className="rounded-xl border border-gray-700/80 bg-gray-800/50 p-4 space-y-2">
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Pricing breakdown</p>
+                  {(showGold || showSilver || showDiamond) && (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-500">Pricing breakdown</p>
                       {showGold && viewingProduct.gold_weight_14k != null && (
-                        <p className="text-xs text-gray-400">
-                          Gold (14K): <span className="text-gray-300">{viewingProduct.gold_weight_14k} g</span>
+                        <p className="text-xs text-slate-400">
+                          Gold (14K): <span className="text-slate-600">{viewingProduct.gold_weight_14k} g</span>
+                        </p>
+                      )}
+                      {showSilver && viewingProduct.silver_weight != null && (
+                        <p className="text-xs text-slate-400">
+                          Silver: <span className="text-slate-600">{viewingProduct.silver_weight} g</span>
                         </p>
                       )}
                       {showDiamond && viewingProduct.diamond_weight_carat != null && (
-                        <p className="text-xs text-gray-400">
-                          Diamond: <span className="text-gray-300">{viewingProduct.diamond_weight_carat} ct</span>
+                        <p className="text-xs text-slate-400">
+                          Diamond: <span className="text-slate-600">{viewingProduct.diamond_weight_carat} ct</span>
                         </p>
                       )}
                       {viewingProduct.labour_charge != null && Number(viewingProduct.labour_charge) > 0 && (
-                        <p className="text-xs text-gray-400">
-                          Labour: <span className="text-gray-300">रु {Number(viewingProduct.labour_charge).toLocaleString('en-IN')}</span>
+                        <p className="text-xs text-slate-400">
+                          Labour: <span className="text-slate-600">रु {Number(viewingProduct.labour_charge).toLocaleString('en-IN')}</span>
                         </p>
                       )}
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-5 border-t border-gray-700/80">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-5 pt-5 border-t border-slate-200">
                   <a
                     href={storefrontUrl(`/product/${viewingProduct.id}`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-700 text-sm text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                   >
                     <ExternalLink className="w-4 h-4" />
                     View on store
@@ -503,7 +511,7 @@ export function AdminProductList() {
                       setViewingProduct(null);
                       navigate(`/products/edit/${id}`);
                     }}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/90 text-gray-900 text-sm font-semibold hover:bg-amber-400 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/90 text-slate-900 text-sm font-semibold hover:bg-amber-400 transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                     Edit product
@@ -535,9 +543,11 @@ export function AdminProductForm() {
     price: '',
     product_type: 'both',
     gold_weight_14k: '',
+    silver_weight: '',
     diamond_weight_carat: '',
     labour_charge: '',
     gold_extra_charge: '',
+    silver_extra_charge: '',
     diamond_extra_charge: '',
     image_url: '',
     category: 'rings',
@@ -545,9 +555,10 @@ export function AdminProductForm() {
     stock: '10',
     featured: false,
   });
-  const autoPricedTypes = new Set(['gold', 'diamond', 'both']);
+  const autoPricedTypes = new Set(['gold', 'silver', 'diamond', 'both']);
   const isAutoPricedType = autoPricedTypes.has(formData.product_type);
   const showGoldFields = formData.product_type === 'gold' || formData.product_type === 'both';
+  const showSilverFields = formData.product_type === 'silver';
   const showDiamondFields = formData.product_type === 'diamond' || formData.product_type === 'both';
 
   useEffect(() => {
@@ -574,9 +585,11 @@ export function AdminProductForm() {
         price: textOrEmpty(data.price),
         product_type: data.product_type ?? 'both',
         gold_weight_14k: textOrEmpty(data.gold_weight_14k),
+        silver_weight: textOrEmpty(data.silver_weight),
         diamond_weight_carat: textOrEmpty(data.diamond_weight_carat),
         labour_charge: textOrEmpty(data.labour_charge),
         gold_extra_charge: textOrEmpty(data.gold_extra_charge),
+        silver_extra_charge: textOrEmpty(data.silver_extra_charge),
         diamond_extra_charge: textOrEmpty(data.diamond_extra_charge),
         image_url: data.image_url,
         category: data.category,
@@ -594,13 +607,16 @@ export function AdminProductForm() {
   useEffect(() => {
     const gramsPerTola = settings?.gramsPerTola ?? 11.664;
     const goldRatePerGram = settings?.goldRatePerGram ?? 16358;
+    const silverRatePerGram = settings?.silverRatePerGram ?? 434;
     const diamondRatePerCarat = settings?.diamondRatePerCarat ?? 28000;
     const makingChargeRate = settings?.goldMakingChargeRate ?? 0.4;
 
     const goldWeight = Number(formData.gold_weight_14k || 0);
+    const silverWeight = Number(formData.silver_weight || 0);
     const diamondWeight = Number(formData.diamond_weight_carat || 0);
     const labourCharge = Number(formData.labour_charge || 0);
     const goldExtraCharge = Number(formData.gold_extra_charge || 0);
+    const silverExtraCharge = Number(formData.silver_extra_charge || 0);
     const diamondExtraCharge = Number(formData.diamond_extra_charge || 0);
 
     const goldRatePerTola = goldRatePerGram * gramsPerTola;
@@ -608,13 +624,20 @@ export function AdminProductForm() {
     const goldBase = goldWeight * goldPerGram14k;
     const goldMaking = goldBase * makingChargeRate;
     const goldSelling = goldBase + goldMaking + labourCharge + goldExtraCharge;
+
+    const silverBase = silverWeight * silverRatePerGram;
+    const silverMaking = silverBase * makingChargeRate;
+    const silverSelling = silverBase + silverMaking + labourCharge + silverExtraCharge;
+
     const diamondSelling = diamondWeight * diamondRatePerCarat + diamondExtraCharge;
     const computed =
       formData.product_type === 'gold'
         ? Math.round(goldSelling)
-        : formData.product_type === 'diamond'
-          ? Math.round(diamondSelling + labourCharge)
-          : Math.round(goldSelling + diamondSelling);
+        : formData.product_type === 'silver'
+          ? Math.round(silverSelling)
+          : formData.product_type === 'diamond'
+            ? Math.round(diamondSelling + labourCharge)
+            : Math.round(goldSelling + diamondSelling);
 
     if (isAutoPricedType) {
       setFormData((prev) => ({
@@ -624,8 +647,10 @@ export function AdminProductForm() {
     }
   }, [
     formData.gold_weight_14k,
+    formData.silver_weight,
     formData.diamond_weight_carat,
     settings?.goldRatePerGram,
+    settings?.silverRatePerGram,
     settings?.diamondRatePerCarat,
     settings?.goldMakingChargeRate,
     settings?.gramsPerTola,
@@ -633,17 +658,18 @@ export function AdminProductForm() {
     isAutoPricedType,
     formData.labour_charge,
     formData.gold_extra_charge,
+    formData.silver_extra_charge,
     formData.diamond_extra_charge,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.product_id.trim()) {
-      showNotification('Please enter a unique Product ID.');
+      showAdminNotification('Please enter a unique Product ID.', 'error');
       return;
     }
     if (!formData.image_url.trim()) {
-      showNotification('Please add a product image (upload or paste a URL).');
+      showAdminNotification('Please add a product image (upload or paste a URL).', 'error');
       return;
     }
     setSaving(true);
@@ -661,6 +687,9 @@ export function AdminProductForm() {
         gold_weight_14k: id
           ? choose(formData.gold_weight_14k, loadedProduct?.gold_weight_14k)
           : numOrZero(formData.gold_weight_14k),
+        silver_weight: id
+          ? choose(formData.silver_weight, loadedProduct?.silver_weight)
+          : numOrZero(formData.silver_weight),
         diamond_weight_carat: id
           ? choose(formData.diamond_weight_carat, loadedProduct?.diamond_weight_carat)
           : numOrZero(formData.diamond_weight_carat),
@@ -670,6 +699,9 @@ export function AdminProductForm() {
         gold_extra_charge: id
           ? choose(formData.gold_extra_charge, loadedProduct?.gold_extra_charge)
           : numOrZero(formData.gold_extra_charge),
+        silver_extra_charge: id
+          ? choose(formData.silver_extra_charge, loadedProduct?.silver_extra_charge)
+          : numOrZero(formData.silver_extra_charge),
         diamond_extra_charge: id
           ? choose(formData.diamond_extra_charge, loadedProduct?.diamond_extra_charge)
           : numOrZero(formData.diamond_extra_charge),
@@ -698,22 +730,24 @@ export function AdminProductForm() {
         String(verified?.product_type ?? '') === String(payload.product_type ?? '') &&
         Number(verified?.price ?? 0) === Number(payload.price ?? 0) &&
         Number(verified?.gold_weight_14k ?? 0) === Number(payload.gold_weight_14k ?? 0) &&
+        Number(verified?.silver_weight ?? 0) === Number(payload.silver_weight ?? 0) &&
         Number(verified?.diamond_weight_carat ?? 0) === Number(payload.diamond_weight_carat ?? 0) &&
         Number(verified?.labour_charge ?? 0) === Number(payload.labour_charge ?? 0) &&
         Number(verified?.gold_extra_charge ?? 0) === Number(payload.gold_extra_charge ?? 0) &&
+        Number(verified?.silver_extra_charge ?? 0) === Number(payload.silver_extra_charge ?? 0) &&
         Number(verified?.diamond_extra_charge ?? 0) === Number(payload.diamond_extra_charge ?? 0);
 
       if (!verifiedOk) {
-        showNotification('Save verification failed. Please try again.');
+        showAdminNotification('Save verification failed. Please try again.', 'error');
         setSaving(false);
         return;
       }
 
-      showNotification('Saved to database successfully.');
+      showAdminNotification('Saved to database successfully.');
       navigate('/products');
     } catch (err) {
       console.error('Failed to save product:', err);
-      showNotification(err instanceof Error ? err.message : 'Failed to save product.');
+      showAdminNotification(err instanceof Error ? err.message : 'Failed to save product.', 'error');
     } finally {
       setSaving(false);
     }
@@ -732,11 +766,11 @@ export function AdminProductForm() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate('/products')}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 text-gray-400 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
-        <h2 className="text-xl font-semibold text-white">{id ? 'Edit Product' : 'New Product'}</h2>
+        <h2 className="text-xl font-semibold text-slate-900">{id ? 'Edit Product' : 'New Product'}</h2>
       </motion.div>
 
       <motion.form
@@ -744,10 +778,10 @@ export function AdminProductForm() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         onSubmit={handleSubmit}
-        className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 space-y-6"
+        className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6"
       >
         <div>
-          <label className="text-sm font-medium text-white mb-2 block">Product ID</label>
+          <label className="text-sm font-medium text-slate-900 mb-2 block">Product ID</label>
           <input
             type="text"
             value={formData.product_id}
@@ -757,48 +791,48 @@ export function AdminProductForm() {
             placeholder="e.g. DW-RING-001"
             pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
             title="Letters, numbers, dots, underscores, and hyphens only"
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white font-mono placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 font-mono placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Unique code you assign (required). Used in the product table and search.
           </p>
         </div>
 
         <div>
-          <label className="text-sm font-medium text-white mb-2 block">Product Name</label>
+          <label className="text-sm font-medium text-slate-900 mb-2 block">Product Name</label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium text-white mb-2 block">Description</label>
+          <label className="text-sm font-medium text-slate-900 mb-2 block">Description</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={4}
             required
-            className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all resize-none"
+            className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all resize-none"
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">Product Type</label>
+            <label className="text-sm font-medium text-slate-900 mb-2 block">Product Type</label>
             {id && (
-              <p className="text-xs text-gray-500 mb-2">
-                Current type: <span className="text-gray-300 capitalize">{formData.product_type === 'both' ? 'Gold + Diamond' : formData.product_type}</span>
+              <p className="text-xs text-slate-500 mb-2">
+                Current type: <span className="text-slate-600 capitalize">{formData.product_type === 'both' ? 'Gold + Diamond' : formData.product_type}</span>
               </p>
             )}
             <select
               value={formData.product_type}
               onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
               disabled={Boolean(id) && !allowTypeChange}
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
             >
               <option value="gold">Gold</option>
               <option value="diamond">Diamond</option>
@@ -809,8 +843,8 @@ export function AdminProductForm() {
               <option value="gemstone">Gemstone</option>
               <option value="custom">Other / Custom</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">
-              {!id ? 'Gold/Diamond/Both are auto-priced. Other types use manual price.' : ''}
+            <p className="text-xs text-slate-500 mt-1">
+              {!id ? 'Gold/Silver/Diamond/Both are auto-priced. Other types use manual price.' : ''}
             </p>
             {id && !allowTypeChange && (
               <button
@@ -820,13 +854,13 @@ export function AdminProductForm() {
                     setAllowTypeChange(true);
                   }
                 }}
-                className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-500/10 text-violet-500 border border-violet-500/30 hover:bg-violet-500/20 transition-colors"
+                className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-50 text-violet-500 border border-violet-200 hover:bg-violet-100 transition-colors"
               >
                 Enable Type Change
               </button>
             )}
             {id && allowTypeChange && formData.product_type !== originalType && (
-              <p className="text-xs text-violet-400 mt-2">
+              <p className="text-xs text-violet-600 mt-2">
                 Type changed from <span className="capitalize">{originalType === 'both' ? 'Gold + Diamond' : originalType}</span> to{' '}
                 <span className="capitalize">{formData.product_type === 'both' ? 'Gold + Diamond' : formData.product_type}</span>.
                 Save to apply.
@@ -837,7 +871,7 @@ export function AdminProductForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">Price (रु)</label>
+            <label className="text-sm font-medium text-slate-900 mb-2 block">Price (रु)</label>
             <input
               type="number"
               step="0.01"
@@ -845,9 +879,9 @@ export function AdminProductForm() {
               onChange={(e) => !isAutoPricedType && setFormData({ ...formData, price: e.target.value })}
               readOnly={isAutoPricedType}
               required
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {isAutoPricedType ? '' : 'Manual price entry for selected product type'}
             </p>
           </div>
@@ -856,37 +890,76 @@ export function AdminProductForm() {
         {showGoldFields && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="text-sm font-medium text-white mb-2 block">Gold Weight 14K (gm)</label>
+              <label className="text-sm font-medium text-slate-900 mb-2 block">Gold Weight 14K (gm)</label>
               <input
                 type="number"
                 step="0.001"
                 value={formData.gold_weight_14k}
                 onChange={(e) => setFormData({ ...formData, gold_weight_14k: e.target.value })}
-                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
               />
             </div>
             {formData.product_type === 'gold' && (
               <div>
-                <label className="text-sm font-medium text-white mb-2 block">Labour Charge (रु)</label>
+                <label className="text-sm font-medium text-slate-900 mb-2 block">Labour Charge (रु)</label>
                 <input
                   type="number"
                   step="1"
                   value={formData.labour_charge}
                   onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 />
               </div>
             )}
             <div>
-              <label className="text-sm font-medium text-white mb-2 block">Gold Extra Charge (रु)</label>
+              <label className="text-sm font-medium text-slate-900 mb-2 block">Gold Extra Charge (रु)</label>
               <input
                 type="number"
                 step="1"
                 value={formData.gold_extra_charge}
                 onChange={(e) => setFormData({ ...formData, gold_extra_charge: e.target.value })}
-                className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
               />
-              <p className="text-xs text-gray-500 mt-1">Any additional gold-side cost (e.g. transport/other)</p>
+              <p className="text-xs text-slate-500 mt-1">Any additional gold-side cost (e.g. transport/other)</p>
+            </div>
+          </div>
+        )}
+
+        {showSilverFields && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="text-sm font-medium text-slate-900 mb-2 block">Silver Weight (gm)</label>
+              <input
+                type="number"
+                step="0.001"
+                value={formData.silver_weight}
+                onChange={(e) => setFormData({ ...formData, silver_weight: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Uses settings silver rate + same making charge % as gold
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-900 mb-2 block">Labour Charge (रु)</label>
+              <input
+                type="number"
+                step="1"
+                value={formData.labour_charge}
+                onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-900 mb-2 block">Silver Extra Charge (रु)</label>
+              <input
+                type="number"
+                step="1"
+                value={formData.silver_extra_charge}
+                onChange={(e) => setFormData({ ...formData, silver_extra_charge: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              />
+              <p className="text-xs text-slate-500 mt-1">Any additional silver-side cost (e.g. transport/other)</p>
             </div>
           </div>
         )}
@@ -895,36 +968,36 @@ export function AdminProductForm() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="text-sm font-medium text-white mb-2 block">Diamond Weight (carat)</label>
+                <label className="text-sm font-medium text-slate-900 mb-2 block">Diamond Weight (carat)</label>
                 <input
                   type="number"
                   step="0.001"
                   value={formData.diamond_weight_carat}
                   onChange={(e) => setFormData({ ...formData, diamond_weight_carat: e.target.value })}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-white mb-2 block">Diamond Extra Charge (रु)</label>
+                <label className="text-sm font-medium text-slate-900 mb-2 block">Diamond Extra Charge (रु)</label>
                 <input
                   type="number"
                   step="1"
                   value={formData.diamond_extra_charge}
                   onChange={(e) => setFormData({ ...formData, diamond_extra_charge: e.target.value })}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 />
-                <p className="text-xs text-gray-500 mt-1">Any additional diamond-side cost/markup</p>
+                <p className="text-xs text-slate-500 mt-1">Any additional diamond-side cost/markup</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-white mb-2 block">Labour Charge (रु)</label>
+                <label className="text-sm font-medium text-slate-900 mb-2 block">Labour Charge (रु)</label>
                 <input
                   type="number"
                   step="1"
                   value={formData.labour_charge}
                   onChange={(e) => setFormData({ ...formData, labour_charge: e.target.value })}
-                  className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
                 />
-                <p className="text-xs text-gray-500 mt-1">Added to the calculated diamond selling price</p>
+                <p className="text-xs text-slate-500 mt-1">Added to the calculated diamond selling price</p>
               </div>
             </div>
 
@@ -933,24 +1006,24 @@ export function AdminProductForm() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">Stock</label>
+            <label className="text-sm font-medium text-slate-900 mb-2 block">Stock</label>
             <input
               type="number"
               value={formData.stock}
               onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
               required
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">Category</label>
+            <label className="text-sm font-medium text-slate-900 mb-2 block">Category</label>
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
             >
               {apiCategories.map(c => (
                 <option key={c.slug} value={c.slug}>{c.name}</option>
@@ -958,14 +1031,14 @@ export function AdminProductForm() {
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">Material</label>
+            <label className="text-sm font-medium text-slate-900 mb-2 block">Material</label>
             <input
               type="text"
               value={formData.material}
               onChange={(e) => setFormData({ ...formData, material: e.target.value })}
               placeholder="e.g., 18k Gold, Diamond"
               required
-              className="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+              className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all"
             />
           </div>
         </div>
@@ -978,7 +1051,7 @@ export function AdminProductForm() {
           hint="Upload is resized for the catalog."
         />
 
-        <label className="flex items-center gap-3 p-4 bg-gray-800/30 rounded-xl cursor-pointer hover:bg-gray-800/50 transition-colors">
+        <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl cursor-pointer hover:bg-white transition-colors">
           <input
             type="checkbox"
             checked={formData.featured}
@@ -986,16 +1059,16 @@ export function AdminProductForm() {
             className="w-4 h-4 accent-violet-500 rounded"
           />
           <div>
-            <p className="text-sm text-white">Featured product</p>
-            <p className="text-xs text-gray-500">Show this product on the homepage</p>
+            <p className="text-sm text-slate-900">Featured product</p>
+            <p className="text-xs text-slate-500">Show this product on the homepage</p>
           </div>
         </label>
 
-        <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
+        <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-sm disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Product'}
@@ -1003,7 +1076,7 @@ export function AdminProductForm() {
           <button
             type="button"
             onClick={() => navigate('/products')}
-            className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-xl transition-colors text-sm border border-gray-700"
+            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-100 text-slate-600 font-medium rounded-xl transition-colors text-sm border border-slate-200"
           >
             Cancel
           </button>

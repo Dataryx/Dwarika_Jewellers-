@@ -52,7 +52,7 @@ export function ImageUploadField({
   return (
     <div className="space-y-2">
       {label ? (
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
           <LabelIcon className="w-4 h-4 text-violet-500 shrink-0" />
           {label}
         </label>
@@ -60,7 +60,7 @@ export function ImageUploadField({
 
       <div className="flex flex-wrap gap-4 items-start">
         {value ? (
-          <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-gray-600 bg-gray-900 shrink-0">
+          <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-slate-300 bg-white shrink-0">
             <img src={value} alt="" className="w-full h-full object-cover" />
             <button
               type="button"
@@ -83,7 +83,7 @@ export function ImageUploadField({
               type="button"
               disabled={disabled || busy}
               onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-700 text-white text-sm rounded-lg border border-gray-600 hover:bg-gray-600 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-200 text-slate-900 text-sm rounded-lg border border-slate-300 hover:bg-slate-300 disabled:opacity-50"
             >
               <Upload className="w-4 h-4" />
               {busy ? 'Processing…' : 'Upload from computer'}
@@ -104,11 +104,11 @@ export function ImageUploadField({
               value={urlFieldValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={isDataUrl ? 'Paste a URL to replace the uploaded image' : 'https://… or upload above'}
-              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-violet-500 disabled:opacity-50"
+              className="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-lg text-slate-900 text-sm placeholder:text-slate-500 focus:outline-none focus:border-violet-500 disabled:opacity-50"
             />
           ) : null}
-          {hint ? <p className="text-xs text-gray-500">{hint}</p> : null}
-          {error ? <p className="text-xs text-red-400">{error}</p> : null}
+          {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
         </div>
       </div>
     </div>

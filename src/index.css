@@ -37,6 +37,43 @@
   }
 }
 
+/* Admin light theme tokens — keep shell/pages/widgets on one palette */
+.admin-app {
+  --admin-canvas: #f4f6fb;
+  --admin-surface: #ffffff;
+  --admin-sidebar: #ebe6f7;
+  --admin-sidebar-border: #d8d0ef;
+  --admin-sidebar-hover: rgba(255, 255, 255, 0.55);
+  --admin-sidebar-active: #ffffff;
+  --admin-border: #e2e8f0;
+  --admin-muted: #64748b;
+  --admin-text: #0f172a;
+  --admin-accent: #7c3aed;
+  --admin-accent-soft: #ede9fe;
+  --admin-accent-strong: #6d28d9;
+  color: var(--admin-text);
+  background: var(--admin-canvas);
+}
+
+.admin-sidebar {
+  background: var(--admin-sidebar);
+  border-color: var(--admin-sidebar-border);
+}
+
+.admin-sidebar-divider {
+  border-color: var(--admin-sidebar-border);
+}
+
+.admin-nav-active {
+  background: var(--admin-sidebar-active);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 0 0 1px rgb(124 58 237 / 0.08);
+}
+
+.admin-surface {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

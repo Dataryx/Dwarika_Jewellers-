@@ -102,10 +102,10 @@ function RevenuePanel({ data }: { data: RevenuePoint[] }) {
         {data.map((point) => (
           <div key={point.name} className="group flex h-full flex-1 flex-col items-center justify-end gap-2">
             <div className="relative flex h-full w-full items-end justify-center">
-              <span className="pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-md bg-[#17233d] px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="pointer-events-none absolute bottom-full mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
                 रु {point.revenue.toLocaleString('en-IN')}
               </span>
-              <div className="w-full max-w-8 rounded-t-lg bg-gradient-to-t from-[#c9a962] to-[#f1d69a] transition-all group-hover:from-[#17233d] group-hover:to-[#30466f]" style={{ height: `${Math.max(7, (point.revenue / max) * 100)}%` }} />
+              <div className="w-full max-w-8 rounded-t-lg bg-gradient-to-t from-[#c9a962] to-[#f1d69a] transition-all group-hover:from-violet-600 group-hover:to-violet-400" style={{ height: `${Math.max(7, (point.revenue / max) * 100)}%` }} />
             </div>
             <span className="text-[10px] font-medium text-slate-400">{point.name}</span>
           </div>
@@ -121,12 +121,12 @@ function CategoryPanel({ data }: { data: CategoryPoint[] }) {
     return `${item.color} ${start}% ${start + item.value}%`;
   }).join(', ');
   return (
-    <section className="rounded-2xl bg-[#17233d] p-6 text-white shadow-[0_12px_30px_rgb(15_23_42_/_0.14)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#f1d69a]">Catalog mix</p>
+    <section className="rounded-2xl bg-white border border-slate-200 p-6 text-slate-900 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d6b2e]">Catalog mix</p>
       <h2 className="mt-1 text-xl font-semibold tracking-tight">Where your collection lives</h2>
       <div className="mt-7 flex items-center gap-6">
         <div className="relative h-32 w-32 shrink-0 rounded-full" style={{ background: `conic-gradient(${gradient})` }}>
-          <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-[#17233d]">
+          <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-white">
             <span className="text-xl font-semibold">{data.reduce((sum, item) => sum + item.value, 0)}%</span>
             <span className="text-[10px] text-slate-400">catalog</span>
           </div>
@@ -134,8 +134,8 @@ function CategoryPanel({ data }: { data: CategoryPoint[] }) {
         <div className="min-w-0 flex-1 space-y-3">
           {data.slice(0, 4).map((item) => (
             <div key={item.name} className="flex items-center justify-between gap-3 text-xs">
-              <span className="flex min-w-0 items-center gap-2 text-slate-300"><span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />{item.name}</span>
-              <span className="font-semibold text-white">{item.value}%</span>
+              <span className="flex min-w-0 items-center gap-2 text-slate-500"><span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />{item.name}</span>
+              <span className="font-semibold text-slate-900">{item.value}%</span>
             </div>
           ))}
         </div>
@@ -175,7 +175,7 @@ function ProductRanking({ products }: { products: ProductPoint[] }) {
   return (
     <section className="rounded-2xl border border-[#eadfca] bg-[#f7f3e8] p-6">
       <div className="flex items-start justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a88b4a]">Merchandising</p><h2 className="mt-1 text-xl font-semibold text-[#17233d]">Best sellers</h2></div><Pager page={page} pages={pages} onChange={setPage} /></div>
-      <div className="mt-6 space-y-3">{visible.map((product, index) => <div key={product.name} className="flex items-center gap-3 rounded-xl bg-white/75 p-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#17233d] text-xs font-semibold text-[#f1d69a]">{(page - 1) * 4 + index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-[#17233d]">{product.name}</p><p className="mt-0.5 text-xs text-slate-500">{product.sales} sold · {product.stock} in stock</p></div><span className="text-xs font-semibold text-[#8d6b2e]">{product.revenue}</span></div>)}</div>
+      <div className="mt-6 space-y-3">{visible.map((product, index) => <div key={product.name} className="flex items-center gap-3 rounded-xl bg-white/75 p-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-xs font-semibold text-white">{(page - 1) * 4 + index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-[#17233d]">{product.name}</p><p className="mt-0.5 text-xs text-slate-500">{product.sales} sold · {product.stock} in stock</p></div><span className="text-xs font-semibold text-[#8d6b2e]">{product.revenue}</span></div>)}</div>
     </section>
   );
 }
@@ -189,7 +189,7 @@ function ActivityPanel({ activities }: { activities: Activity[] }) {
   const [page, setPage] = useState(1);
   const pages = Math.max(1, Math.ceil(activities.length / 4));
   const visible = activities.slice((page - 1) * 4, page * 4);
-  return <section className="rounded-2xl bg-[#17233d] p-6 text-white"><div className="flex items-start justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#f1d69a]">Live log</p><h2 className="mt-1 text-xl font-semibold">Store activity</h2></div><Pager page={page} pages={pages} onChange={setPage} /></div>  <div className="mt-6 space-y-5">{visible.map((activity, index) => <div key={`${activity.action}-${index}`} className="flex gap-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#c9a962]" /><div className="min-w-0"><p className="text-sm font-medium text-white">{activity.action}</p><p className="mt-0.5 text-xs text-slate-300">{activity.detail}</p><p className="mt-1 text-[10px] uppercase tracking-wider text-slate-300">{activity.time}</p></div></div>)}</div></section>;
+  return <section className="rounded-2xl bg-white border border-slate-200 p-6 text-slate-900"><div className="flex items-start justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8d6b2e]">Live log</p><h2 className="mt-1 text-xl font-semibold">Store activity</h2></div><Pager page={page} pages={pages} onChange={setPage} /></div>  <div className="mt-6 space-y-5">{visible.map((activity, index) => <div key={`${activity.action}-${index}`} className="flex gap-3"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#c9a962]" /><div className="min-w-0"><p className="text-sm font-medium text-slate-900">{activity.action}</p><p className="mt-0.5 text-xs text-slate-500">{activity.detail}</p><p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">{activity.time}</p></div></div>)}</div></section>;
 }
 
 export default function DashboardOverview({ stats, statChanges, revenueData, categoryData, orderStatusData, topProducts, recentOrders, activityFeed, onExport }: DashboardOverviewProps) {
@@ -201,8 +201,8 @@ export default function DashboardOverview({ stats, statChanges, revenueData, cat
   ];
   return (
     <div className="admin-dashboard-v2 space-y-5">
-      <header className="flex flex-col justify-between gap-5 rounded-2xl bg-[#17233d] px-6 py-7 text-white shadow-[0_14px_32px_rgb(15_23_42_/_0.16)] sm:flex-row sm:items-end">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#f1d69a]">Dwarika Jewellers</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Your store, in focus.</h1><p className="mt-2 max-w-xl text-sm text-slate-300">Monitor the collection, orders, and customer momentum from one calm workspace.</p></div>
+      <header className="flex flex-col justify-between gap-5 rounded-2xl bg-white border border-slate-200 px-6 py-7 text-slate-900 shadow-sm sm:flex-row sm:items-end">
+        <div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d6b2e]">Dwarika Jewellers</p><h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Your store, in focus.</h1><p className="mt-2 max-w-xl text-sm text-slate-500">Monitor the collection, orders, and customer momentum from one calm workspace.</p></div>
         <button type="button" onClick={onExport} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c9a962] px-4 py-2.5 text-sm font-semibold text-[#17233d] transition-colors hover:bg-[#f1d69a]"><ArrowUpRight className="h-4 w-4" />Export report</button>
       </header>
       <MetricRail metrics={metrics} />

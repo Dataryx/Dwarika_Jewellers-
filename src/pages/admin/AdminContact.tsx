@@ -4,7 +4,7 @@ import {
   Save, Loader2, Check, MapPin, Phone, Mail, Clock, Globe, MessageSquare, Trash2, Eye,
 } from 'lucide-react';
 import { adminFetch } from '../../lib/adminApi';
-import { showNotification } from '../../components/Notification';
+import { showAdminNotification } from '../../components/Notification';
 import { AdminPage, contactSocialGridClass, useAdminSidebarOpen } from '../../lib/adminPageLayout';
 
 interface ContactInfo {
@@ -37,7 +37,7 @@ interface Message {
 type Tab = 'info' | 'messages';
 
 const inputClass =
-  'w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all';
+  'w-full bg-slate-100 border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/20 transition-all';
 
 export default function AdminContact() {
   const sidebarOpen = useAdminSidebarOpen();
@@ -77,9 +77,9 @@ export default function AdminContact() {
       if (!res.ok) throw new Error();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-      showNotification('Contact info saved');
+      showAdminNotification('Contact info saved');
     } catch {
-      showNotification('Failed to save');
+      showAdminNotification('Failed to save');
     } finally {
       setSaving(false);
     }
@@ -94,9 +94,9 @@ export default function AdminContact() {
         body: JSON.stringify({ id }),
       });
       setMessages((prev) => prev.filter((m) => m.id !== id));
-      showNotification('Message deleted');
+      showAdminNotification('Message deleted');
     } catch {
-      showNotification('Failed to delete');
+      showAdminNotification('Failed to delete');
     }
   };
 
@@ -112,7 +112,7 @@ export default function AdminContact() {
 
   if (loading || !info) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-400 gap-2">
+      <div className="flex items-center justify-center py-20 text-slate-400 gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Loading…
       </div>
     );
@@ -126,12 +126,12 @@ export default function AdminContact() {
   return (
     <AdminPage>
       <div>
-        <h1 className="text-2xl font-semibold text-white">Contact Page</h1>
-        <p className="text-gray-400 text-sm mt-1">Edit contact details and view customer messages</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Contact Page</h1>
+        <p className="text-slate-400 text-sm mt-1">Edit contact details and view customer messages</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 bg-gray-800 rounded-xl p-1 w-fit max-w-full">
+      <div className="flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1 w-fit max-w-full">
         {tabs.map((t) => {
           const Icon = t.icon;
           return (
@@ -139,12 +139,12 @@ export default function AdminContact() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                tab === t.id ? 'bg-gray-700 text-violet-500 shadow-sm' : 'text-gray-400 hover:text-white'
+                tab === t.id ? 'bg-slate-200 text-violet-500 shadow-sm' : 'text-slate-400 hover:text-slate-900'
               }`}
             >
               <Icon className="w-4 h-4" /> {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-violet-500/20 text-violet-500 text-[10px] font-bold rounded-full">{t.count}</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-violet-100 text-violet-600 text-[10px] font-bold rounded-full">{t.count}</span>
               )}
             </button>
           );
@@ -155,95 +155,95 @@ export default function AdminContact() {
       {tab === 'info' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           {/* Hero Section */}
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+          <div className="bg-slate-100 rounded-2xl border border-slate-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
               <Globe className="w-4 h-4 text-violet-500" /> Page Header
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">Subtitle</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">Subtitle</label>
                 <input value={info.heroSubtitle} onChange={(e) => update('heroSubtitle', e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">Title</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">Title</label>
                 <input value={info.heroTitle} onChange={(e) => update('heroTitle', e.target.value)} className={inputClass} />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">Description</label>
+              <label className="text-sm font-medium text-slate-600 mb-2 block">Description</label>
               <textarea value={info.heroDescription} onChange={(e) => update('heroDescription', e.target.value)} rows={2} className={`${inputClass} resize-y`} />
             </div>
           </div>
 
           {/* Store Info */}
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+          <div className="bg-slate-100 rounded-2xl border border-slate-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-violet-500" /> Store Details
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">Section Heading</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">Section Heading</label>
                 <input value={info.storeHeading} onChange={(e) => update('storeHeading', e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">Section Description</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">Section Description</label>
                 <input value={info.storeDescription} onChange={(e) => update('storeDescription', e.target.value)} className={inputClass} />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Address</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block flex items-center gap-2"><MapPin className="w-3.5 h-3.5" /> Address</label>
                 <textarea value={info.address} onChange={(e) => update('address', e.target.value)} rows={2} className={`${inputClass} resize-y`} />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> Opening Hours</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> Opening Hours</label>
                 <textarea value={info.openingHours} onChange={(e) => update('openingHours', e.target.value)} rows={2} className={`${inputClass} resize-y`} />
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> Phone</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> Phone</label>
                 <input value={info.phone} onChange={(e) => update('phone', e.target.value)} className={inputClass} />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Email</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Email</label>
                 <input value={info.email} onChange={(e) => update('email', e.target.value)} className={inputClass} />
               </div>
             </div>
             <div className={contactSocialGridClass(sidebarOpen)}>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">Facebook URL</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">Facebook URL</label>
                 <input value={info.facebook} onChange={(e) => update('facebook', e.target.value)} className={inputClass} placeholder="https://facebook.com/yourpage" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">Instagram URL</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">Instagram URL</label>
                 <input value={info.instagram} onChange={(e) => update('instagram', e.target.value)} className={inputClass} placeholder="https://instagram.com/yourhandle" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">TikTok URL</label>
+                <label className="text-sm font-medium text-slate-600 mb-2 block">TikTok URL</label>
                 <input value={info.tiktok} onChange={(e) => update('tiktok', e.target.value)} className={inputClass} placeholder="https://tiktok.com/@yourhandle" />
               </div>
             </div>
           </div>
 
           {/* Map */}
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6 space-y-4">
-            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+          <div className="bg-slate-100 rounded-2xl border border-slate-200 p-6 space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
               <Globe className="w-4 h-4 text-violet-500" /> Google Maps Embed
             </h2>
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">Map Embed URL</label>
+              <label className="text-sm font-medium text-slate-600 mb-2 block">Map Embed URL</label>
               <input value={info.mapEmbedUrl} onChange={(e) => update('mapEmbedUrl', e.target.value)} className={inputClass} placeholder="Paste Google Maps embed URL" />
-              <p className="text-xs text-gray-500 mt-1">Go to Google Maps → Share → Embed a map → Copy the src URL</p>
+              <p className="text-xs text-slate-500 mt-1">Go to Google Maps → Share → Embed a map → Copy the src URL</p>
             </div>
             {info.mapEmbedUrl && (
-              <div className="aspect-[16/6] rounded-lg overflow-hidden border border-gray-700">
+              <div className="aspect-[16/6] rounded-lg overflow-hidden border border-slate-200">
                 <iframe src={info.mapEmbedUrl} className="w-full h-full border-0" loading="lazy" title="Map preview" />
               </div>
             )}
           </div>
 
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-violet-500 hover:bg-violet-400 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
           </button>
@@ -254,35 +254,35 @@ export default function AdminContact() {
       {tab === 'messages' && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           {messages.length === 0 ? (
-            <div className="text-center py-16 bg-gray-800/60 border border-gray-700 rounded-2xl">
-              <MessageSquare className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">No messages yet. Messages from the contact form will appear here.</p>
+            <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl">
+              <MessageSquare className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-500 text-sm">No messages yet. Messages from the contact form will appear here.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-colors"
+                  className="bg-slate-100 border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition-colors"
                 >
                   <div
                     className="flex items-center gap-4 px-5 py-4 cursor-pointer"
                     onClick={() => setExpandedMsg(expandedMsg === msg.id ? null : msg.id)}
                   >
-                    <div className="w-9 h-9 bg-violet-500/10 rounded-full flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 bg-violet-50 rounded-full flex items-center justify-center shrink-0">
                       <span className="text-violet-500 text-sm font-bold">{msg.name.charAt(0).toUpperCase()}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-white truncate">{msg.name}</span>
-                        <span className="text-xs text-gray-500">{msg.email}</span>
+                        <span className="text-sm font-medium text-slate-900 truncate">{msg.name}</span>
+                        <span className="text-xs text-slate-500">{msg.email}</span>
                       </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{msg.subject || msg.message}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{msg.subject || msg.message}</p>
                     </div>
-                    <span className="text-xs text-gray-600 shrink-0">{timeAgo(msg.created_at)}</span>
+                    <span className="text-xs text-slate-600 shrink-0">{timeAgo(msg.created_at)}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteMsg(msg.id); }}
-                      className="text-gray-600 hover:text-red-400 transition-colors shrink-0"
+                      className="text-slate-600 hover:text-red-600 transition-colors shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -292,21 +292,21 @@ export default function AdminContact() {
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
-                      className="px-5 pb-4 border-t border-gray-700/50"
+                      className="px-5 pb-4 border-t border-slate-200/50"
                     >
                       <div className="pt-4 space-y-3">
                         <div className="grid sm:grid-cols-3 gap-3 text-xs">
-                          <div><span className="text-gray-500">Name:</span> <span className="text-white ml-1">{msg.name}</span></div>
-                          <div><span className="text-gray-500">Email:</span> <span className="text-white ml-1">{msg.email}</span></div>
-                          <div><span className="text-gray-500">Phone:</span> <span className="text-white ml-1">{msg.phone || '-'}</span></div>
+                          <div><span className="text-slate-500">Name:</span> <span className="text-slate-900 ml-1">{msg.name}</span></div>
+                          <div><span className="text-slate-500">Email:</span> <span className="text-slate-900 ml-1">{msg.email}</span></div>
+                          <div><span className="text-slate-500">Phone:</span> <span className="text-slate-900 ml-1">{msg.phone || '-'}</span></div>
                         </div>
                         {msg.subject && (
-                          <div className="text-xs"><span className="text-gray-500">Subject:</span> <span className="text-violet-500 ml-1 font-medium">{msg.subject}</span></div>
+                          <div className="text-xs"><span className="text-slate-500">Subject:</span> <span className="text-violet-500 ml-1 font-medium">{msg.subject}</span></div>
                         )}
-                        <div className="bg-gray-900/50 rounded-lg p-4">
-                          <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                        <div className="bg-slate-50 rounded-lg p-4">
+                          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                         </div>
-                        <p className="text-[10px] text-gray-600">{new Date(msg.created_at).toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-600">{new Date(msg.created_at).toLocaleString()}</p>
                       </div>
                     </motion.div>
                   )}

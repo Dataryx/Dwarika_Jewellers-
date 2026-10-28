@@ -18,29 +18,31 @@ export default function TrafficChart({ data }: TrafficChartProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.45 }}
-      className="bg-gray-800/60 border border-gray-700 rounded-2xl p-6 h-full flex flex-col"
+      className="bg-white border border-slate-200 rounded-2xl p-6 h-full flex flex-col"
     >
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-base font-semibold text-white">Order Status</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Distribution of orders by status</p>
+          <h3 className="text-base font-semibold text-slate-900">Order Status</h3>
+          <p className="text-sm text-slate-500 mt-0.5">Distribution of orders by status</p>
         </div>
       </div>
       <div className="flex-1 min-h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
           <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
           <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#1f2937',
-              border: '1px solid #374151',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
               borderRadius: '12px',
-              color: '#e5e7eb',
+              color: '#111827',
               fontSize: '13px',
             }}
-            cursor={{ fill: '#374151', opacity: 0.5 }}
+            itemStyle={{ color: '#374151' }}
+            labelStyle={{ color: '#111827' }}
+            cursor={{ fill: '#e5e7eb', opacity: 0.6 }}
           />
           <Bar dataKey="orders" radius={[6, 6, 0, 0]}>
             {data.map((entry, index) => (
