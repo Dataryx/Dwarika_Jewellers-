@@ -411,8 +411,7 @@ function PaymentSettings({ settings, update }: SettingsProps) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-500">
-        Toggle payment methods on or off. Only enabled methods appear on checkout. Currently only{' '}
-        <span className="text-slate-600">Cash on Delivery</span> can complete an order - other methods are shown as coming soon.
+        Toggle payment methods on or off. Every enabled method appears on checkout and can be used to place an order.
       </p>
 
       {/* Add new method */}

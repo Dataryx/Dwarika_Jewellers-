@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle, CreditCard, Banknote, Clock, Wallet, LogIn, UserPlus } from 'lucide-react';
+import { ArrowLeft, CheckCircle, CreditCard, Banknote, Wallet, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
@@ -19,8 +19,6 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   'Bank Transfer': <CreditCard className="w-5 h-5 text-blue-600" />,
   'Credit / Debit Card': <CreditCard className="w-5 h-5 text-gray-400" />,
 };
-
-const FUNCTIONAL_METHODS = new Set(['Cash on Delivery']);
 
 export default function Checkout() {
   const { cart, clearCart, setCart } = useStore();
@@ -70,7 +68,6 @@ export default function Checkout() {
     ? Object.entries(settings.paymentMethods)
         .filter(([, on]) => on)
         .map(([name]) => name)
-        .filter((name) => FUNCTIONAL_METHODS.has(name))
     : ['Cash on Delivery'];
 
   useEffect(() => {
@@ -85,7 +82,7 @@ export default function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!FUNCTIONAL_METHODS.has(paymentMethod)) return;
+    if (!enabledMethods.includes(paymentMethod)) return;
     setLoading(true);
     setOrderError('');
 
@@ -234,7 +231,7 @@ export default function Checkout() {
     );
   }
 
-  const isFunctional = FUNCTIONAL_METHODS.has(paymentMethod);
+  const canPlaceOrder = enabledMethods.length > 0 && enabledMethods.includes(paymentMethod);
 
   return (
     <div className="min-h-screen pt-8 pb-20 bg-white">
@@ -272,68 +269,51 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* Payment Method - dynamically from settings */}
+              {/* Payment Method - all methods enabled in admin settings */}
               <div>
                 <h3 className="text-xs font-semibold tracking-[0.15em] uppercase text-gray-900 mb-5">Payment Method</h3>
                 <div className="space-y-3">
-                  {enabledMethods.map((method) => {
-                    const functional = FUNCTIONAL_METHODS.has(method);
-                    const selected = paymentMethod === method;
-                    return (
-                      <label
-                        key={method}
-                        className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 cursor-pointer transition-all ${
-                          selected
-                            ? functional
+                  {enabledMethods.length === 0 ? (
+                    <p className="text-sm text-gray-500">No payment methods are available. Please contact the store.</p>
+                  ) : (
+                    enabledMethods.map((method) => {
+                      const selected = paymentMethod === method;
+                      return (
+                        <label
+                          key={method}
+                          className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 cursor-pointer transition-all ${
+                            selected
                               ? 'bg-[#c9a962]/10 border-2 border-[#c9a962]'
-                              : 'bg-[#faf9f7] border-2 border-gray-200'
-                            : 'bg-[#faf9f7] border-2 border-transparent hover:border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value={method}
-                          checked={selected}
-                          onChange={() => setPaymentMethod(method)}
-                          className="sr-only"
-                        />
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          selected ? (functional ? 'border-[#c9a962]' : 'border-gray-400') : 'border-gray-300'
-                        }`}>
-                          {selected && (
-                            <div className={`w-2.5 h-2.5 rounded-full ${functional ? 'bg-[#c9a962]' : 'bg-gray-400'}`} />
-                          )}
-                        </div>
-                        {METHOD_ICONS[method] || <CreditCard className="w-5 h-5 text-gray-400" />}
-                        <div className="flex-1">
-                          <p className={`text-sm font-medium ${functional ? 'text-gray-900' : 'text-gray-400'}`}>{method}</p>
-                        </div>
-                        {selected && functional && <CheckCircle className="w-5 h-5 text-[#c9a962] shrink-0" />}
-                        {!functional && (
-                          <span className="px-3 py-1 bg-gray-200 text-gray-500 text-[10px] font-medium tracking-wider uppercase rounded-full shrink-0">
-                            Coming Soon
-                          </span>
-                        )}
-                        </div>
-                      </label>
-                    );
-                  })}
+                              : 'bg-[#faf9f7] border-2 border-transparent hover:border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              value={method}
+                              checked={selected}
+                              onChange={() => setPaymentMethod(method)}
+                              className="sr-only"
+                            />
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                selected ? 'border-[#c9a962]' : 'border-gray-300'
+                              }`}
+                            >
+                              {selected && <div className="w-2.5 h-2.5 rounded-full bg-[#c9a962]" />}
+                            </div>
+                            {METHOD_ICONS[method] || <CreditCard className="w-5 h-5 text-gray-400" />}
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{method}</p>
+                            </div>
+                            {selected && <CheckCircle className="w-5 h-5 text-[#c9a962] shrink-0" />}
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
                 </div>
-
-                {!isFunctional && paymentMethod && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-4 p-4 bg-gray-50 border border-gray-200"
-                  >
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <Clock className="w-4 h-4" />
-                      <p className="text-xs">{paymentMethod} will be available soon</p>
-                    </div>
-                  </motion.div>
-                )}
               </div>
 
               {/* Submit */}
@@ -343,22 +323,24 @@ export default function Checkout() {
                 </p>
               )}
               <motion.button
-                whileHover={isFunctional ? { scale: 1.01 } : {}}
-                whileTap={isFunctional ? { scale: 0.99 } : {}}
+                whileHover={canPlaceOrder ? { scale: 1.01 } : {}}
+                whileTap={canPlaceOrder ? { scale: 0.99 } : {}}
                 type="submit"
-                disabled={loading || !isFunctional}
+                disabled={loading || !canPlaceOrder}
                 className={`w-full py-4 text-xs font-medium tracking-[0.15em] uppercase transition-colors ${
-                  !isFunctional
+                  !canPlaceOrder
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-gray-900 text-white hover:bg-[#c9a962] disabled:opacity-50'
                 }`}
               >
-                {loading ? 'Processing...' : isFunctional ? 'Place Order' : 'Select a working payment method'}
+                {loading ? 'Processing...' : 'Place Order'}
               </motion.button>
 
-              {isFunctional && (
+              {canPlaceOrder && (
                 <p className="text-xs text-gray-400 text-center">
-                  You will pay {formatPrice(total)} when your order arrives
+                  {paymentMethod === 'Cash on Delivery'
+                    ? `You will pay ${formatPrice(total)} when your order arrives`
+                    : `Payment method: ${paymentMethod} · Total ${formatPrice(total)}`}
                 </p>
               )}
             </form>

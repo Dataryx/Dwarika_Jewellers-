@@ -16,7 +16,7 @@ import { showNotification } from '../components/Notification';
 
 const DWARIKA_LOGO = '/DWARIKA%20MAIN%20LOGO.png';
 
-type AuthMode = 'login' | 'signup' | 'forgot-password';
+type AuthMode = 'login' | 'signup' | 'forgot-password' | 'resend-verification';
 
 interface FormErrors {
   email?: string;
@@ -56,8 +56,13 @@ export default function Login() {
 
   useEffect(() => {
     const q = String(searchParams.get('mode') || '').toLowerCase();
-    if (q === 'signup' || q === 'forgot-password' || q === 'login') {
-      setMode(q === 'login' ? 'login' : q);
+    if (
+      q === 'signup' ||
+      q === 'forgot-password' ||
+      q === 'resend-verification' ||
+      q === 'login'
+    ) {
+      setMode(q === 'login' ? 'login' : (q as AuthMode));
     } else if (!searchParams.has('mode')) {
       setMode('login');
     }
@@ -102,7 +107,7 @@ export default function Login() {
     const newErrors: FormErrors = {};
     const emailError = validateEmail(email);
     if (emailError) newErrors.email = emailError;
-    if (mode !== 'forgot-password') {
+    if (mode !== 'forgot-password' && mode !== 'resend-verification') {
       const passwordError = validatePassword(password);
       if (passwordError) newErrors.password = passwordError;
     }
@@ -151,6 +156,15 @@ export default function Login() {
       } else if (mode === 'forgot-password') {
         const data = await requestPasswordReset(email.trim().toLowerCase());
         setSuccessMessage(data.message || 'If an account exists for that email, a reset link has been sent.');
+      } else if (mode === 'resend-verification') {
+        const target = email.trim().toLowerCase();
+        const data = await resendVerificationEmail(target);
+        setPendingVerificationEmail(target);
+        setSuccessMessage(
+          data.message ||
+            'If a signup is waiting for confirmation for that email, a new verification link has been sent.'
+        );
+        showNotification('Check your email for a new verification link.');
       }
     } catch (err) {
       if (err instanceof CustomerAuthError && err.code === 'EMAIL_NOT_VERIFIED') {
@@ -165,19 +179,22 @@ export default function Login() {
   };
 
   const handleResendVerification = async () => {
-    const target = pendingVerificationEmail || email.trim().toLowerCase();
-    if (!target) {
-      setErrors({ general: 'Enter your email address first.' });
+    const target = (pendingVerificationEmail || email).trim().toLowerCase();
+    const emailError = validateEmail(target);
+    if (emailError) {
+      setErrors({ email: emailError, general: 'Enter a valid email to resend the verification link.' });
       return;
     }
     setResending(true);
     setErrors({});
     try {
       const data = await resendVerificationEmail(target);
-      setSuccessMessage(
-        data.message || 'If an unverified account exists for that email, a new confirmation link has been sent.'
-      );
+      const msg =
+        data.message ||
+        'If a signup is waiting for confirmation for that email, a new verification link has been sent.';
+      setSuccessMessage(msg);
       setPendingVerificationEmail(target);
+      showNotification('Check your email for a new verification link.');
     } catch (err) {
       setErrors({
         general: err instanceof Error ? err.message : 'Could not resend confirmation email.',
@@ -228,11 +245,13 @@ export default function Login() {
               {mode === 'login' && 'Welcome Back'}
               {mode === 'signup' && 'Create Account'}
               {mode === 'forgot-password' && 'Reset Password'}
+              {mode === 'resend-verification' && 'Resend Verification'}
             </h1>
             <p className="mt-2 text-sm text-gray-500">
               {mode === 'login' && 'Sign in to your account'}
               {mode === 'signup' && 'Join us for exclusive access'}
               {mode === 'forgot-password' && "We'll email you a reset link"}
+              {mode === 'resend-verification' && "We'll email you a new verification link"}
             </p>
           </div>
 
@@ -343,7 +362,7 @@ export default function Login() {
             </div>
 
             <AnimatePresence>
-              {mode !== 'forgot-password' && (
+              {mode !== 'forgot-password' && mode !== 'resend-verification' && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -427,14 +446,22 @@ export default function Login() {
               <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => {
-                    switchMode('forgot-password');
-                    setErrors({});
-                    setSuccessMessage('');
-                  }}
+                  onClick={() => switchMode('forgot-password')}
                   className="text-xs text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Forgot password?
+                </button>
+              </div>
+            )}
+
+            {mode === 'signup' && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => switchMode('resend-verification')}
+                  className="text-xs text-[#c9a962] hover:text-[#a88b4a] font-medium"
+                >
+                  Didn’t get verification email?
                 </button>
               </div>
             )}
@@ -451,6 +478,7 @@ export default function Login() {
                   {mode === 'login' && 'Sign In'}
                   {mode === 'signup' && 'Create Account'}
                   {mode === 'forgot-password' && 'Send Reset Link'}
+                  {mode === 'resend-verification' && 'Send Verification Link'}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -491,6 +519,26 @@ export default function Login() {
                   className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
                 >
                   Sign in
+                </button>
+              </>
+            )}
+            {mode === 'resend-verification' && (
+              <>
+                Ready to sign in?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
+                >
+                  Sign in
+                </button>
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('signup')}
+                  className="text-[#c9a962] hover:text-[#a88b4a] font-medium"
+                >
+                  Sign up
                 </button>
               </>
             )}
